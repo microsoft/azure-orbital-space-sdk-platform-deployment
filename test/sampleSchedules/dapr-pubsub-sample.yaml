@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dapr-pubsub-sample
+  namespace: payload-app
+  labels:
+    app: dapr-pubsub-sample
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dapr-pubsub-sample
+  template:
+    metadata:
+      labels:
+        app: dapr-pubsub-sample
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "dapr-pubsub-sample"
+        dapr.io/app-protocol: "http"
+        dapr.io/app-port: "5009"
+        dapr.io/log-level: "info"
+    spec:
+      containers:
+      - name: dapr-pubsub-sample
+        image: ghcr.io/dapr/samples/pubsub-csharp-subscriber:latest
+        imagePullPolicy: IfNotPresent
+        command: ["dotnet"]
+        args: [ "/app/csharp-subscriber.dll"]
+        resources:
+            limits:
+              memory: 128Mi
+            requests:
+              memory: 25Mi

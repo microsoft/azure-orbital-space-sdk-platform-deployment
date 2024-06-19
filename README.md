@@ -1,14 +1,66 @@
-# Project
+# Azure Orbital Space SDK - Platform-Deployment
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+[![spacefx-dev-build-publish](https://github.com/microsoft/azure-orbital-space-sdk-core/actions/workflows/devcontainer-feature-build-publish.yml/badge.svg)](https://github.com/microsoft/azure-orbital-space-sdk-core/actions/workflows/devcontainer-feature-build-publish.yml)
 
-As the maintainer of this project, please make a few updates:
+This repository hosts the Platform-Deployment.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+Outputs:
+
+| Item                                                                       | Description                                                             |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `Microsoft.Azure.SpaceSDK.PlatformServices.Deployment.Plugins.1.0.0.nupkg` | DotNet Nuget Package for building Platform-Deployment Plugins           |
+| `platform-deployment:0.11.0`                                               | Container image for app                                                 |
+| `platform-deployment:0.11.0_base`                                          | Base container image for app.  Requires SpaceSDK_Base and build service |
+
+## Building
+
+1. Provision /var/spacedev
+
+    ```bash
+    # clone the azure-orbital-space-sdk-setup repo and provision /var/spacedev
+    git clone https://github.com/microsoft/azure-orbital-space-sdk-setup
+    cd azure-orbital-space-sdk-setup
+    bash ./.vscode/copy_to_spacedev.sh
+    cd -
+    ```
+
+1. Build the nuget packages and the container images.  (Note: container images will automatically push)
+
+    ```bash
+    # clone this repo
+    git clone https://github.com/microsoft/azure-orbital-space-sdk-platform-deployment
+
+    cd azure-orbital-space-sdk-platform-deployment
+
+    # Trigger the build_app.sh from azure-orbital-space-sdk-setup
+    /var/spacedev/build/dotnet/build_app.sh \
+        --repo-dir ${PWD} \
+        --app-project src/platform-deployment.csproj \
+        --nuget-project src_pluginBase/pluginBase.csproj \
+        --architecture amd64 \
+        --output-dir /var/spacedev/tmp/platform-deployment \
+        --app-version 0.11.0 \
+        --annotation-config azure-orbital-space-sdk-platform-deployment.yaml
+    ```
+
+1. Copy the build artifacts to their locations in /var/spacedev
+
+    ```bash
+    sudo mkdir -p /var/spacedev/nuget/deployment
+
+    sudo cp /var/spacedev/tmp/platform-deployment/amd64/nuget/Microsoft.Azure.SpaceSDK.PlatformServices.Deployment.Plugins.0.11.0.nupkg /var/spacedev/nuget/deployment
+    ```
+
+1. Push the artifacts to the container registry
+
+    ```bash
+    # Push the nuget package to the container registry
+    /var/spacedev/build/push_build_artifact.sh \
+            --artifact /var/spacedev/nuget/deployment/Microsoft.Azure.SpaceSDK.PlatformServices.Deployment.Plugins.0.11.0.nupkg \
+            --annotation-config azure-orbital-space-sdk-platform-deployment.yaml \
+            --architecture amd64 \
+            --artifact-version 0.11.0
+    ```
 
 ## Contributing
 
@@ -26,8 +78,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
