@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <PackageId>Microsoft.Azure.SpaceFx.PlatformServices.Deployment.Plugins</PackageId>
+    <PackageId>Microsoft.Azure.SpaceSDK.PlatformServices.Deployment.Plugins</PackageId>
     <PackageTags>Microsoft Azure Space SDK;Microsoft;Azure;Space;</PackageTags>
     <Description>
       Base class for Deployment Service Plugins
