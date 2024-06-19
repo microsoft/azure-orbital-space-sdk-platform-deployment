@@ -1,0 +1,22 @@
+[
+    {
+        "requestHeader": {
+            "correlationId": "e88f213e-3573-43fd-9661-ea63251682fc"
+        },
+        "appName": "vth",
+        "nameSpace": "platformsvc",
+        "appGroupLabel": "ACME",
+        "customerTrackingId": "abc123-456-789",
+        "deployAction": "BUILD_IMAGE",
+        "appContainerBuild": {
+            "dockerFile": "ServiceAppBuild.docker",
+            "destinationRepository": "vth",
+            "destinationTag": "0.10.1",
+            "buildArguments": {
+                "SERVICE_NAME": "vth",
+                "CONTAINER_REGISTRY": "core-registry.core.svc.cluster.local:5000",
+                "SDK_VERSION": "0.10.0"
+            }
+        }
+    }
+]

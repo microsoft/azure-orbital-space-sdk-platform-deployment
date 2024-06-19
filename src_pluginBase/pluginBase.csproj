@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Microsoft.Azure.SpaceSDK.PlatformServices.Deployment.Plugins</PackageId>
+    <PackageTags>Microsoft Azure Space SDK;Microsoft;Azure;Space;</PackageTags>
+    <Description>
+      Base class for Deployment Service Plugins
+    </Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RuntimeIdentifiers>win-x64;linux-x64;linux-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.SpaceSDK.Core" Version="$([System.IO.File]::ReadAllText('/spacefx-dev/config/spacefx_version'))" />
+    <PackageReference Include="Grpc.Tools" Version="2.57.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Protobuf Include="/var/spacedev/protos/spacefx/link/Link.proto" GrpcServices="Client" Access="Public" ProtoCompile="True" CompileOutputs="True" ProtoRoot="/var/spacedev/protos" OutputDir="obj/Debug/net6.0/"></Protobuf>
+    <Protobuf Include="/var/spacedev/protos/spacefx/deployment/Deployment.proto" GrpcServices="Client" Access="Public" ProtoCompile="True" CompileOutputs="True" ProtoRoot="/var/spacedev/protos" OutputDir="obj/Debug/net6.0/"></Protobuf>
+  </ItemGroup>
+</Project>

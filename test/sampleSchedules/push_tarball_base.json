@@ -1,0 +1,23 @@
+[
+    {
+        "RequestHeader": {
+            "CorrelationId": "e88f213e-3573-43fd-9661-ea63251682fc"
+        },
+        "AppName": "integration-test-app",
+        "NameSpace": "payload-app",
+        "AppGroupLabel": "ACME",
+        "CustomerTrackingId": "abc123-456-789",
+        "YamlFileContents": "",
+        "DeployAction": 3,
+        "Priority": 1,
+        "AppContextString": null,
+        "AppContextFile": null,
+        "AppContextCase": 0,
+        "GpuRequirement": 0,
+        "AppContainerImage": {
+            "TarballFileName": "vth_base.tar",
+            "DestinationRepository": "vth",
+            "DestinationTag": "0.10.0_base"
+        }
+    }
+]

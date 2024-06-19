@@ -1,0 +1,12 @@
+[
+    {
+        "RequestHeader": {
+            "CorrelationId": "e88f213e-3573-43fd-9661-ea63251682fc"
+        },
+        "AppName": "hostsvc-sensor",
+        "NameSpace": "hostsvc",
+        "AppGroupLabel": "ACME",
+        "CustomerTrackingId": "abc123-456-789",
+        "DeployAction": 5
+    }
+]

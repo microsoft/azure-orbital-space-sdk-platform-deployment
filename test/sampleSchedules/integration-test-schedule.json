@@ -1,0 +1,23 @@
+[
+    {
+        "AppName": "platform-deployment-client",
+        "NameSpace": "payload-app",
+        "DeployAction": "UplinkFile",
+        "AppContextFile": {
+            "FileName": "astronaut.jpg",
+            "Required": "true"
+        }
+    },
+    {
+        "AppName": "integration-test-app",
+        "NameSpace": "payload-app",
+        "MaxDuration": "120s",
+        "DeployAction": "Apply",
+        "YamlFileContents": "integration-test-deployment.yaml",
+        "AppContainerImage": {
+            "TarballFileName": "pubsub-csharp-subscriber.tar",
+            "DestinationRepository": "pubsub-csharp-subscriber",
+            "DestinationTag": "1.9.0"
+        }
+    }
+]
