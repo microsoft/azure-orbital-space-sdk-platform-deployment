@@ -1,0 +1,48 @@
+name: platform-deployment-build
+
+on: 
+    workflow_dispatch:
+    push:
+        branches:
+        - km/add_action
+
+jobs:
+  build-platform-deployment-amd64:
+    permissions:
+      contents: read
+      packages: write
+
+    uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/service-build.yml@main
+    with:
+      APP_PROJECT: ./src/platform-deployment.csproj
+      NUGET_PROJECT: ./src_pluginBase/pluginBase.csproj
+      OUTPUT_DIR: /var/spacedev/tmp/platform-deployment
+      NUGET_STAGING_DIRECTORY: /var/spacedev/nuget/deployment
+      NUGET_FILE_PREFIX: Microsoft.Azure.SpaceSDK.PlatformServices.Deployment.Plugins
+      ANNOTATION: azure-orbital-space-sdk-platform-deployment.yaml
+      WORKFLOW_AGENT: ubuntu-latest
+      ARCHITECTURE: amd64
+    secrets:
+      GIT_HUB_USER_NAME: ${{ secrets.GIT_HUB_USER_NAME }}
+      GIT_HUB_USER_TOKEN: ${{ secrets.GIT_HUB_USER_TOKEN }}
+      SETUP_REPO_URL: ${{ secrets.SETUP_REPO_URL }}
+
+  build-platform-deployment-arm64:
+    permissions:
+      contents: read
+      packages: write
+
+    uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/service-build.yml@main
+    with:
+      APP_PROJECT: ./src/platform-deployment.csproj
+      NUGET_PROJECT: ./src_pluginBase/pluginBase.csproj
+      OUTPUT_DIR: /var/spacedev/tmp/platform-deployment
+      NUGET_STAGING_DIRECTORY: /var/spacedev/nuget/deployment
+      NUGET_FILE_PREFIX: Microsoft.Azure.SpaceSDK.PlatformServices.Deployment.Plugins
+      ANNOTATION: azure-orbital-space-sdk-platform-deployment.yaml
+      WORKFLOW_AGENT: spacesdk-ubuntu-2204LTS-arm64
+      ARCHITECTURE: arm64
+    secrets:
+      GIT_HUB_USER_NAME: ${{ secrets.GIT_HUB_USER_NAME }}
+      GIT_HUB_USER_TOKEN: ${{ secrets.GIT_HUB_USER_TOKEN }}
+      SETUP_REPO_URL: ${{ secrets.SETUP_REPO_URL }}
