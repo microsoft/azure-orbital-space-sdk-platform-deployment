@@ -6,7 +6,7 @@ on:
       branches: [ main ]
 
 jobs:
- test-platform-deployment-amd64:
+  test-platform-deployment-amd64:
     permissions:
       contents: read
       issues: read
@@ -23,18 +23,18 @@ jobs:
       SETUP_REPO_URL: ${{ secrets.SETUP_REPO_URL }}
       
 
-  # test-platform-deployment-arm64:
-  #   permissions:
-  #     contents: read
-  #     issues: read
-  #     checks: write
-  #     pull-requests: write
+  test-platform-deployment-arm64:
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
 
-  #   uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/test-app.yaml@main
-  #   with:
-  #     APP_NAME: platform-deployment
-  #     WORKFLOW_AGENT: spacesdk-ubuntu-2204LTS-arm64
-  #   secrets:
-  #     GIT_HUB_USER_NAME: ${{ secrets.GIT_HUB_USER_NAME }}
-  #     GIT_HUB_USER_TOKEN: ${{ secrets.GIT_HUB_USER_TOKEN }}
-  #     SETUP_REPO_URL: ${{ secrets.SETUP_REPO_URL }}
+    uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/test-app.yaml@main
+    with:
+      APP_NAME: platform-deployment
+      WORKFLOW_AGENT: spacesdk-ubuntu-2204LTS-arm64
+    secrets:
+      GIT_HUB_USER_NAME: ${{ secrets.GIT_HUB_USER_NAME }}
+      GIT_HUB_USER_TOKEN: ${{ secrets.GIT_HUB_USER_TOKEN }}
+      SETUP_REPO_URL: ${{ secrets.SETUP_REPO_URL }}
