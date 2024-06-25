@@ -1,6 +1,6 @@
 # Azure Orbital Space SDK - Platform-Deployment
 
-[![spacefx-dev-build-publish](https://github.com/microsoft/azure-orbital-space-sdk-core/actions/workflows/devcontainer-feature-build-publish.yml/badge.svg)](https://github.com/microsoft/azure-orbital-space-sdk-core/actions/workflows/devcontainer-feature-build-publish.yml)
+[![platform-deployment-build](https://github.com/microsoft/azure-orbital-space-sdk-platform-deployment/actions/workflows/platform-deployment-build-publish.yaml/badge.svg)](https://github.com/microsoft/azure-orbital-space-sdk-platform-deployment/actions/workflows/platform-deployment-build-publish.yaml)
 
 This repository hosts the Platform-Deployment.
 
