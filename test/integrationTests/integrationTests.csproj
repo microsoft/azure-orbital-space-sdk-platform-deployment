@@ -24,6 +24,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <Protobuf Include="/var/spacedev/protos/spacefx/link/Link.proto" GrpcServices="Client" Access="Public" ProtoCompile="True" CompileOutputs="True" ProtoRoot="/var/spacedev/protos" OutputDir="obj/Debug/net6.0/"></Protobuf>
+    <Protobuf Include="/var/spacedev/protos/spacefx/protos/link/Link.proto" GrpcServices="Client" Access="Public" ProtoCompile="True" CompileOutputs="True" ProtoRoot="/var/spacedev/protos" OutputDir="obj/Debug/net6.0/"></Protobuf>
   </ItemGroup>
 </Project>
