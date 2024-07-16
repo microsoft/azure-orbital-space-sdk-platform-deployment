@@ -14,11 +14,11 @@ public partial class Services {
         private readonly Utils.K8sClient _k8sClient;
         private readonly Utils.DownlinkUtil _downlinkUtil;
         private readonly Utils.TimeUtils _timeUtils;
+
         private string _scheduleImportDirectory;
         private string _regctlApp;
-        private string _helmApp;
 
-        private string _helmApp;
+
         private readonly ConcurrentDictionary<Guid, MessageFormats.PlatformServices.Deployment.DeployResponse> _deployRequestCache;
         public DeployRequestProcessor(ILogger<DeployRequestProcessor> logger, IServiceProvider serviceProvider, IOptions<Models.APP_CONFIG> appConfig, Core.Services.PluginLoader pluginLoader, Core.Client client, PluginDelegates pluginDelegates, Utils.K8sClient k8sClient, Utils.DownlinkUtil downlinkUtil, Utils.TimeUtils timeUtil) {
             _logger = logger;
@@ -30,17 +30,13 @@ public partial class Services {
             _k8sClient = k8sClient;
             _downlinkUtil = downlinkUtil;
             _timeUtils = timeUtil;
+
             _deployRequestCache = new ConcurrentDictionary<Guid, MessageFormats.PlatformServices.Deployment.DeployResponse>();
 
             _scheduleImportDirectory = Path.Combine(_client.GetXFerDirectories().Result.inbox_directory, _appConfig.SCHEDULE_IMPORT_DIRECTORY);
 
             _regctlApp = Path.Combine(_client.GetXFerDirectories().Result.root_directory, "tmp", "regctl", "regctl");
-            _helmApp = Path.Combine(_client.GetXFerDirectories().Result.root_directory, "tmp", "helm", "helm");
 
-            if (!File.Exists(_helmApp)) {
-                _logger.LogWarning("helm not found at '{helmApp}'.  Helm chart deployment will be disabled", _helmApp);
-                throw new FileNotFoundException("helm not found at '{helmApp}' and is required for Platform-Deployment.  Please check helm is in the right place and restart Platform-Deployment", _helmApp);
-            }
 
             if (File.Exists(_regctlApp)) {
                 _logger.LogInformation("regctl found at '{regctlApp}'", _regctlApp);

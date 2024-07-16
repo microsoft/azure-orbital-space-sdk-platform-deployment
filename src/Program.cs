@@ -19,6 +19,7 @@ public class Program {
             services.AddSingleton<Utils.K8sClient>();
             services.AddSingleton<Utils.DownlinkUtil>();
             services.AddSingleton<Utils.TimeUtils>();
+            services.AddSingleton<Utils.SpaceFxChartUtil>();
             services.AddHostedService<Services.ScheduleProcessor>(p => p.GetRequiredService<Services.ScheduleProcessor>());
 
         }).ConfigureLogging((logging) => {

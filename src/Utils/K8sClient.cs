@@ -11,11 +11,13 @@ public partial class Utils {
         private readonly IServiceProvider _serviceProvider;
         private readonly Models.APP_CONFIG _appConfig;
         private readonly string _deploymentOutputDir;
-        public K8sClient(ILogger<K8sClient> logger, IServiceProvider serviceProvider, Core.Client client, IOptions<Models.APP_CONFIG> appConfig) {
+        private Utils.SpaceFxChartUtil _spaceFxChartUtil;
+        public K8sClient(ILogger<K8sClient> logger, IServiceProvider serviceProvider, Core.Client client, IOptions<Models.APP_CONFIG> appConfig, Utils.SpaceFxChartUtil spaceFxChartUtil) {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _client = client;
             _appConfig = appConfig.Value;
+            _spaceFxChartUtil = spaceFxChartUtil;
             KubernetesClientConfiguration config = KubernetesClientConfiguration.BuildDefaultConfig();
             _k8sClient = new Kubernetes(config);
 

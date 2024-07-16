@@ -13,7 +13,7 @@
         "memory": "8gb"
     },
     "features": {
-        "ghcr.io/microsoft/azure-orbital-space-sdk/spacefx-dev:0.11.0": {
+        "ghcr.io/microsoft/azure-orbital-space-sdk/spacefx-dev:0.11.0_ryan_test": {
             "app_name": "platform-deployment",
             "app_type": "sdk-service",
             "addl_debug_shim_suffixes": "client",
