@@ -6,8 +6,8 @@
     "runArgs": [
         "--name=platform-deployment"
     ],
-    "workspaceFolder": "/workspaces/platform-deployment",
-    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/platform-deployment,type=bind,consistency=cached",
+    "workspaceFolder": "/workspace/platform-deployment",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/platform-deployment,type=bind,consistency=cached",
     "hostRequirements": {
         "cpus": 8,
         "memory": "8gb"
@@ -17,7 +17,7 @@
             "app_name": "platform-deployment",
             "app_type": "sdk-service",
             "addl_debug_shim_suffixes": "client",
-            "debug_shim_post_yaml_file": "/workspaces/platform-deployment/.vscode/debugShim-svcAcct-clusterAdmin.yaml"
+            "debug_shim_post_yaml_file": "/workspace/platform-deployment/.vscode/debugShim-svcAcct-clusterAdmin.yaml"
         }
     },
     "customizations": {
@@ -117,5 +117,5 @@
         }
     },
     "remoteUser": "root",
-    "postStartCommand": "regctl image export ghcr.io/dapr/samples/pubsub-csharp-subscriber:1.9.0 --name pubsub-csharp-subscriber > /workspaces/platform-deployment/test/sampleSchedules/pubsub-csharp-subscriber.tar"
+    "postStartCommand": "regctl image export ghcr.io/dapr/samples/pubsub-csharp-subscriber:1.9.0 --name pubsub-csharp-subscriber > /workspace/platform-deployment/test/sampleSchedules/pubsub-csharp-subscriber.tar"
 }

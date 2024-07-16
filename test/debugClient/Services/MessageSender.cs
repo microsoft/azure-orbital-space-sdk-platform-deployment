@@ -26,8 +26,8 @@ public class MessageSender : BackgroundService {
 
             System.IO.Directory.CreateDirectory(OUTBOX);
 
-            System.IO.File.Copy("/workspaces/platform-deployment/test/debugClient/sampleSchedules/busybox.json", string.Format($"{OUTBOX}/busybox.json"), overwrite: true);
-            System.IO.File.Copy("/workspaces/platform-deployment/test/debugClient/sampleSchedules/busybox.yaml", string.Format($"{OUTBOX}/busybox.yaml"), overwrite: true);
+            System.IO.File.Copy("/workspace/platform-deployment/test/debugClient/sampleSchedules/busybox.json", string.Format($"{OUTBOX}/busybox.json"), overwrite: true);
+            System.IO.File.Copy("/workspace/platform-deployment/test/debugClient/sampleSchedules/busybox.yaml", string.Format($"{OUTBOX}/busybox.yaml"), overwrite: true);
 
             await MoveScheduleArtifacts();
         }

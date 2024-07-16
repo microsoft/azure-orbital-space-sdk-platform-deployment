@@ -20,7 +20,7 @@
     <PackageReference Include="YamlDotNet" Version="13.7.1" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="/workspaces/platform-deployment/src_pluginBase/pluginBase.csproj" />
+    <ProjectReference Include="/workspace/platform-deployment/src_pluginBase/pluginBase.csproj" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(Configuration)'=='Release'">
