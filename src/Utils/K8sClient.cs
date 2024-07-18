@@ -11,24 +11,21 @@ public partial class Utils {
         private readonly IServiceProvider _serviceProvider;
         private readonly Models.APP_CONFIG _appConfig;
         private readonly string _deploymentOutputDir;
-        private Utils.SpaceFxChartUtil _spaceFxChartUtil;
-        public K8sClient(ILogger<K8sClient> logger, IServiceProvider serviceProvider, Core.Client client, IOptions<Models.APP_CONFIG> appConfig, Utils.SpaceFxChartUtil spaceFxChartUtil) {
+        private Utils.TemplateUtil _templateUtil;
+        public K8sClient(ILogger<K8sClient> logger, IServiceProvider serviceProvider, Core.Client client, IOptions<Models.APP_CONFIG> appConfig, Utils.TemplateUtil templateUtil) {
             _logger = logger;
             _serviceProvider = serviceProvider;
             _client = client;
             _appConfig = appConfig.Value;
-            _spaceFxChartUtil = spaceFxChartUtil;
+            _templateUtil = templateUtil;
+            _deploymentOutputDir = Path.Combine(_client.GetXFerDirectories().Result.outbox_directory, "deployments");
+
+            Directory.CreateDirectory(_deploymentOutputDir);
+
             KubernetesClientConfiguration config = KubernetesClientConfiguration.BuildDefaultConfig();
             _k8sClient = new Kubernetes(config);
 
-            _deploymentOutputDir = Path.Combine(_client.GetXFerDirectories().Result.outbox_directory, "deployments");
 
-            if (_appConfig.PURGE_SCHEDULE_ON_BOOTUP) {
-                if (Directory.Exists(Path.Combine(_client.GetXFerDirectories().Result.outbox_directory, "deploymentResults"))) Directory.Delete(Path.Combine(_client.GetXFerDirectories().Result.outbox_directory, "deploymentResults"));
-                if (Directory.Exists(_deploymentOutputDir)) Directory.Delete(_deploymentOutputDir, true);
-            }
-
-            Directory.CreateDirectory(_deploymentOutputDir);
 
             _logger.LogInformation("Services.{serviceName} Initialized.", nameof(K8sClient));
         }
@@ -88,13 +85,6 @@ public partial class Utils {
                     File.WriteAllText(Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_orig"), deploymentItem.DeployRequest.YamlFileContents);
                 }
 
-                // Go and make sure the file server credentials are created
-                if ((deploymentItem.DeployRequest.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Apply) ||
-                    (deploymentItem.DeployRequest.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Create)) {
-                    AddFileServerCredentials(deploymentItem.DeployRequest);
-                    AddFileServerVolumesAndClaims(deploymentItem.DeployRequest);
-                    AddConfigurationAsSecrets(deploymentItem.DeployRequest);
-                }
 
                 if (deploymentItem.DeployRequest.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.RestartDeployment) {
                     _logger.LogInformation("Restarting deployment '{AppName}' in Namespace '{NameSpace}' (AppName: '{AppName}' / DeployAction: '{DeployAction}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')", deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.NameSpace, deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId);
@@ -120,65 +110,11 @@ public partial class Utils {
 
                 }
 
+                List<IKubernetesObject> kubernetesObjects = _templateUtil.GenerateKubernetesObjectsFromDeployment(deploymentItem);
+
                 // Loop through the yaml objects from the string
-                foreach (var input_kubernetesObject in (List<object>) KubernetesYaml.LoadAllFromString(deploymentItem.DeployRequest.YamlFileContents)) {
-                    itemX++;
-                    if (((IMetadata<V1ObjectMeta>) input_kubernetesObject).Metadata == null) {
-                        throw new NullReferenceException("Metadata is null or empty");
-                    }
+                foreach (var input_kubernetesObject in kubernetesObjects) {
 
-                    if (string.IsNullOrEmpty(((IMetadata<V1ObjectMeta>) input_kubernetesObject).Metadata.Name)) {
-                        throw new NullReferenceException("Metadata.Name is null or empty");
-                    }
-
-                    processed_kubernetesObject = (IKubernetesObject) input_kubernetesObject;
-
-                    if (input_kubernetesObject.GetType() == typeof(V1Deployment)) {
-                        processed_kubernetesObject = AddUpdateMetaDataToDeployment((V1Deployment) input_kubernetesObject, deploymentItem.DeployRequest.ContainerInjectionTarget, deploymentItem.DeployRequest);
-                        processed_kubernetesObject = AddContainerAndVolumeInjections((V1Deployment) processed_kubernetesObject, deploymentItem.DeployRequest.ContainerInjectionTarget, deploymentItem.DeployRequest);
-                        processed_kubernetesObject = AddServiceAccountName((V1Deployment) processed_kubernetesObject);
-
-                        // Update the deployment object's tokens
-                        tokensizedYamlObject = replaceTemplateTokens(KubernetesYaml.Serialize(processed_kubernetesObject), deploymentItem.DeployRequest);
-
-                        // Reload the yaml object with the next tokenized stuff
-                        processed_kubernetesObject = (IKubernetesObject) KubernetesYaml.LoadAllFromString(tokensizedYamlObject).First();
-
-                        if (_appConfig.ENABLE_YAML_DEBUG) {
-                            _logger.LogDebug("ENABLE_YAML_DEBUG = 'true'.  Outputting item #{itemCount} 'pre' file to '{yamlDestination}'.  (AppName: '{AppName}' / DeployAction: '{DeployAction}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')", itemX.ToString(), Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_item" + itemX.ToString() + "_pre"), deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId);
-                            File.WriteAllText(Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_item" + itemX.ToString() + "_pre"), KubernetesYaml.Serialize(processed_kubernetesObject));
-
-                            _logger.LogDebug("ENABLE_YAML_DEBUG = 'true'.  Outputting item #{itemCount} 'post' file to '{yamlDestination}'.  (AppName: '{AppName}' / DeployAction: '{DeployAction}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')", itemX.ToString(), Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_item" + itemX.ToString() + "_post"), deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId);
-                            File.WriteAllText(Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_item" + itemX.ToString() + "_post"), tokensizedYamlObject);
-                        }
-                    }
-
-                    try {
-                        switch (deploymentItem.DeployRequest.DeployAction) {
-                            case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Apply:
-                                PatchViaYamlObject(processed_kubernetesObject);
-                                break;
-                            case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Delete:
-                                DeleteViaYamlObject(processed_kubernetesObject);
-                                break;
-                            case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Create:
-                                CreateViaYamlObject(processed_kubernetesObject);
-                                break;
-                            default:
-                                throw new Exception(string.Format($"Unknown DeployAction: {deploymentItem.DeployRequest.DeployAction}"));
-                        }
-                    } catch (Exception ex) {
-                        _logger.LogError("Failed to '{action}' item #{itemX} '{objectName}' in yaml.  Writing failures to '{failurePath}'.  Error: {ex}  (trackingId: '{trackingId}' / correlationId: '{correlationId}')",
-                                    deploymentItem.DeployRequest.DeployAction, itemX, input_kubernetesObject.GetType().Name, Path.Combine(_deploymentOutputDir, "failures"), ex.Message, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId);
-
-                        File.WriteAllText(Path.Combine(_deploymentOutputDir, "failures", deploymentItem.DeployRequest.RequestHeader.TrackingId + "_orig"), deploymentItem.DeployRequest.YamlFileContents);
-                        if (processed_kubernetesObject != null) File.WriteAllText(Path.Combine(_deploymentOutputDir, "failures", deploymentItem.DeployRequest.RequestHeader.TrackingId + "_item" + itemX.ToString() + "_pre"), KubernetesYaml.Serialize(processed_kubernetesObject));
-                        if (!string.IsNullOrWhiteSpace(tokensizedYamlObject)) File.WriteAllText(Path.Combine(_deploymentOutputDir, "failures", deploymentItem.DeployRequest.RequestHeader.TrackingId + "_item" + itemX.ToString() + "_post"), tokensizedYamlObject);
-
-                        deploymentItem.ResponseHeader.Status = MessageFormats.Common.StatusCodes.GeneralFailure;
-                        deploymentItem.ResponseHeader.Message = string.Format($"Failed '{deploymentItem.DeployRequest.DeployAction}' action.  Error: {ex.Message}");
-                        throw;
-                    }
                 }
 
                 deploymentItem.ResponseHeader.Status = MessageFormats.Common.StatusCodes.Successful;
@@ -588,148 +524,113 @@ public partial class Utils {
         /// Add any missing labels and anootations to a deployment
         /// </summary>
         private V1Deployment AddUpdateMetaDataToDeployment(V1Deployment yamlDeployment, string containerInjectionTarget, MessageFormats.PlatformServices.Deployment.DeployRequest deployRequest) {
-            yamlDeployment.EnsureMetadata();
-            yamlDeployment.Metadata.EnsureAnnotations();
-            yamlDeployment.Metadata.EnsureLabels();
-            yamlDeployment.Spec.Template.EnsureMetadata();
-            yamlDeployment.Spec.Template.Metadata.EnsureAnnotations();
-            yamlDeployment.Spec.Template.Metadata.EnsureLabels();
-
-            string input_yaml = replaceTemplateTokens($"{_appConfig.PAYLOAD_APP_ANNOTATIONS}", deployRequest);
-
-            if (_appConfig.ENABLE_YAML_DEBUG) {
-                File.WriteAllText(Path.Combine(_deploymentOutputDir, deployRequest.RequestHeader.TrackingId + "_payloadAppNotations_pre"), input_yaml);
-            }
-
-            // Loop through and add annotations
-            foreach (string annotation in input_yaml.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)) {
-                string[] parts = annotation.Split(':');
-                string key = parts[0].Trim();
-                string value = parts[1].Trim();
-
-                // Remove the quotes that are automatically added by chart
-                value = value.Replace("\"", "");
-
-                if (!yamlDeployment.Metadata.Annotations.ContainsKey(key)) yamlDeployment.Metadata.Annotations.Add(key, value);
-                if (!yamlDeployment.Spec.Template.Metadata.Annotations.ContainsKey(key)) yamlDeployment.Spec.Template.Metadata.Annotations.Add(key, value);
-            }
+            // yamlDeployment.EnsureMetadata();
+            // yamlDeployment.Metadata.EnsureAnnotations();
+            // yamlDeployment.Metadata.EnsureLabels();
+            // yamlDeployment.Spec.Template.EnsureMetadata();
+            // yamlDeployment.Spec.Template.Metadata.EnsureAnnotations();
+            // yamlDeployment.Spec.Template.Metadata.EnsureLabels();
 
 
-            input_yaml = replaceTemplateTokens($"{_appConfig.DAPR_ANNOTATIONS}", deployRequest);
+            // string input_yaml = _templateUtil.GenerateAnnotations();
 
-            // Loop through and add annotations
-            foreach (string annotation in input_yaml.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)) {
-                string[] parts = annotation.Split(':');
-                string key = parts[0].Trim();
-                string value = parts[1].Trim();
+            // if (_appConfig.ENABLE_YAML_DEBUG) {
+            //     File.WriteAllText(Path.Combine(_deploymentOutputDir, deployRequest.RequestHeader.TrackingId + "_payloadAppNotations_pre"), input_yaml);
+            // }
 
-                // Remove the quotes that are automatically added by chart
-                value = value.Replace("\"", "");
+            // // Loop through and add annotations
+            // foreach (string annotation in input_yaml.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)) {
+            //     string[] parts = annotation.Split(':');
+            //     string key = parts[0].Trim();
+            //     string value = parts[1].Trim();
 
-                if (!yamlDeployment.Metadata.Annotations.ContainsKey(key)) yamlDeployment.Metadata.Annotations.Add(key, value);
-                if (!yamlDeployment.Spec.Template.Metadata.Annotations.ContainsKey(key)) yamlDeployment.Spec.Template.Metadata.Annotations.Add(key, value);
-            }
+            //     // Remove the quotes that are automatically added by chart
+            //     value = value.Replace("\"", "");
 
+            //     if (!yamlDeployment.Metadata.Annotations.ContainsKey(key)) yamlDeployment.Metadata.Annotations.Add(key, value);
+            //     if (!yamlDeployment.Spec.Template.Metadata.Annotations.ContainsKey(key)) yamlDeployment.Spec.Template.Metadata.Annotations.Add(key, value);
+            // }
 
-            input_yaml = replaceTemplateTokens($"{_appConfig.PAYLOAD_APP_LABELS}", deployRequest);
+            // int containerInjectionTargetX = yamlDeployment.Spec.Template.Spec.Containers.IndexOf(yamlDeployment.Spec.Template.Spec.Containers.FirstOrDefault(_container => _container.Name == containerInjectionTarget));
+            // if (containerInjectionTargetX == -1) containerInjectionTargetX = 0;
 
-            if (_appConfig.ENABLE_YAML_DEBUG) {
-                File.WriteAllText(Path.Combine(_deploymentOutputDir, deployRequest.RequestHeader.TrackingId + "_payloadAppLabels_pre"), input_yaml);
-            }
+            // // Loop through the environment variables and add them to the target container
+            // input_yaml = replaceTemplateTokens($"{_appConfig.PAYLOAD_APP_ENVIRONMENTVARIABLES}", deployRequest);
 
-            // Loop through and add labels
-            foreach (string label in input_yaml.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)) {
-                string[] parts = label.Split(':');
-                string key = parts[0].Trim();
-                string value = parts[1].Trim();
+            // var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
+            //     .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
+            //     .Build();
 
-                // Remove the quotes that are automatically added by chart
-                value = value.Replace("\"", "");
+            // yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env ??= new List<V1EnvVar>();
 
-                if (!yamlDeployment.Metadata.Labels.ContainsKey(key)) yamlDeployment.Metadata.Labels.Add(key, value);
-                if (!yamlDeployment.Spec.Template.Metadata.Labels.ContainsKey(key)) yamlDeployment.Spec.Template.Metadata.Labels.Add(key, value);
-            }
+            // foreach (var environmentvariable in deserializer.Deserialize<List<Dictionary<string, string>>>(input_yaml)) {
+            //     if (!yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Any(yamlEnvVar => yamlEnvVar.Name == environmentvariable["name"])) {
+            //         yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = environmentvariable["name"], Value = environmentvariable["value"] });
+            //     }
+            // }
 
-            int containerInjectionTargetX = yamlDeployment.Spec.Template.Spec.Containers.IndexOf(yamlDeployment.Spec.Template.Spec.Containers.FirstOrDefault(_container => _container.Name == containerInjectionTarget));
-            if (containerInjectionTargetX == -1) containerInjectionTargetX = 0;
+            // // Add the SPACEFX_DIR and SPACEFX_SECRET_DIR since the path may be dynamically changed
+            // if (yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.FirstOrDefault(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_DIR") == null) {
+            //     // Value doesn't exist and needs to be created
+            //     yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = "SPACEFX_DIR", Value = Environment.GetEnvironmentVariable("SPACEFX_DIR") });
+            // } else {
+            //     // Value is already specified.  Overwrite it with the value from Platform-Deployment
+            //     yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.First(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_DIR").Value = Environment.GetEnvironmentVariable("SPACEFX_DIR");
+            // }
 
-            // Loop through the environment variables and add them to the target container
-            input_yaml = replaceTemplateTokens($"{_appConfig.PAYLOAD_APP_ENVIRONMENTVARIABLES}", deployRequest);
+            // if (yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.FirstOrDefault(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_SECRET_DIR") == null) {
+            //     // Value doesn't exist and needs to be created
+            //     yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = "SPACEFX_SECRET_DIR", Value = Environment.GetEnvironmentVariable("SPACEFX_SECRET_DIR") });
+            // } else {
+            //     // Value is already specified.  Overwrite it with the value from Platform-Deployment
+            //     yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.First(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_SECRET_DIR").Value = Environment.GetEnvironmentVariable("SPACEFX_SECRET_DIR");
+            // }
 
-            var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
-                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance)
-                .Build();
+            // if (deployRequest.AppContextString != null && !string.IsNullOrWhiteSpace(deployRequest.AppContextString.AppContext)) {
+            //     if (yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.FirstOrDefault(yamlEnvVar => yamlEnvVar.Name == "APP_CONTEXT") == null) {
+            //         // Value doesn't exist and needs to be created
+            //         yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = "APP_CONTEXT", Value = deployRequest.AppContextString.AppContext });
+            //     } else {
+            //         // Value is already specified.  Overwrite it with the value from Platform-Deployment
+            //         yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.First(yamlEnvVar => yamlEnvVar.Name == "APP_CONTEXT").Value = deployRequest.AppContextString.AppContext;
+            //     }
+            // }
 
-            yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env ??= new List<V1EnvVar>();
+            // // Add default limits and requests to all containers
+            // for (int i = 0; i < yamlDeployment.Spec.Template.Spec.Containers.Count; i++) {
+            //     // Only update the target container with the metadata info.  Otherwise all the containers get the injections
+            //     if (!string.IsNullOrWhiteSpace(containerInjectionTarget) && yamlDeployment.Spec.Template.Spec.Containers[i].Name != containerInjectionTarget) continue;
 
-            foreach (var environmentvariable in deserializer.Deserialize<List<Dictionary<string, string>>>(input_yaml)) {
-                if (!yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Any(yamlEnvVar => yamlEnvVar.Name == environmentvariable["name"])) {
-                    yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = environmentvariable["name"], Value = environmentvariable["value"] });
-                }
-            }
+            //     yamlDeployment.Spec.Template.Spec.Containers[i].Resources ??= new V1ResourceRequirements();
+            //     yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits ??= new Dictionary<string, ResourceQuantity>();
+            //     yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests ??= new Dictionary<string, ResourceQuantity>();
 
-            // Add the SPACEFX_DIR and SPACEFX_SECRET_DIR since the path may be dynamically changed
-            if (yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.FirstOrDefault(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_DIR") == null) {
-                // Value doesn't exist and needs to be created
-                yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = "SPACEFX_DIR", Value = Environment.GetEnvironmentVariable("SPACEFX_DIR") });
-            } else {
-                // Value is already specified.  Overwrite it with the value from Platform-Deployment
-                yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.First(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_DIR").Value = Environment.GetEnvironmentVariable("SPACEFX_DIR");
-            }
+            //     // Add the default value if it's missing
+            //     if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Any(limit => string.Equals(limit.Key, "memory", StringComparison.CurrentCultureIgnoreCase))) {
+            //         yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Add("memory", new ResourceQuantity(_appConfig.DEFAULT_LIMIT_MEMORY));
+            //     }
 
-            if (yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.FirstOrDefault(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_SECRET_DIR") == null) {
-                // Value doesn't exist and needs to be created
-                yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = "SPACEFX_SECRET_DIR", Value = Environment.GetEnvironmentVariable("SPACEFX_SECRET_DIR") });
-            } else {
-                // Value is already specified.  Overwrite it with the value from Platform-Deployment
-                yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.First(yamlEnvVar => yamlEnvVar.Name == "SPACEFX_SECRET_DIR").Value = Environment.GetEnvironmentVariable("SPACEFX_SECRET_DIR");
-            }
+            //     if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Any(limit => string.Equals(limit.Key, "cpu", StringComparison.CurrentCultureIgnoreCase))) {
+            //         yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Add("cpu", new ResourceQuantity(_appConfig.DEFAULT_LIMIT_CPU));
+            //     }
 
-            if (deployRequest.AppContextString != null && !string.IsNullOrWhiteSpace(deployRequest.AppContextString.AppContext)) {
-                if (yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.FirstOrDefault(yamlEnvVar => yamlEnvVar.Name == "APP_CONTEXT") == null) {
-                    // Value doesn't exist and needs to be created
-                    yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.Add(new V1EnvVar() { Name = "APP_CONTEXT", Value = deployRequest.AppContextString.AppContext });
-                } else {
-                    // Value is already specified.  Overwrite it with the value from Platform-Deployment
-                    yamlDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env.First(yamlEnvVar => yamlEnvVar.Name == "APP_CONTEXT").Value = deployRequest.AppContextString.AppContext;
-                }
-            }
+            //     // Add the default value if it's missing
+            //     if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Any(request => string.Equals(request.Key, "memory", StringComparison.CurrentCultureIgnoreCase))) {
+            //         yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Add("memory", new ResourceQuantity(_appConfig.DEFAULT_REQUEST_MEMORY));
+            //     }
 
-            // Add default limits and requests to all containers
-            for (int i = 0; i < yamlDeployment.Spec.Template.Spec.Containers.Count; i++) {
-                // Only update the target container with the metadata info.  Otherwise all the containers get the injections
-                if (!string.IsNullOrWhiteSpace(containerInjectionTarget) && yamlDeployment.Spec.Template.Spec.Containers[i].Name != containerInjectionTarget) continue;
-
-                yamlDeployment.Spec.Template.Spec.Containers[i].Resources ??= new V1ResourceRequirements();
-                yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits ??= new Dictionary<string, ResourceQuantity>();
-                yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests ??= new Dictionary<string, ResourceQuantity>();
-
-                // Add the default value if it's missing
-                if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Any(limit => string.Equals(limit.Key, "memory", StringComparison.CurrentCultureIgnoreCase))) {
-                    yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Add("memory", new ResourceQuantity(_appConfig.DEFAULT_LIMIT_MEMORY));
-                }
-
-                if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Any(limit => string.Equals(limit.Key, "cpu", StringComparison.CurrentCultureIgnoreCase))) {
-                    yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Add("cpu", new ResourceQuantity(_appConfig.DEFAULT_LIMIT_CPU));
-                }
-
-                // Add the default value if it's missing
-                if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Any(request => string.Equals(request.Key, "memory", StringComparison.CurrentCultureIgnoreCase))) {
-                    yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Add("memory", new ResourceQuantity(_appConfig.DEFAULT_REQUEST_MEMORY));
-                }
-
-                if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Any(request => string.Equals(request.Key, "cpu", StringComparison.CurrentCultureIgnoreCase))) {
-                    yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Add("cpu", new ResourceQuantity(_appConfig.DEFAULT_REQUEST_CPU));
-                }
+            //     if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Any(request => string.Equals(request.Key, "cpu", StringComparison.CurrentCultureIgnoreCase))) {
+            //         yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Requests.Add("cpu", new ResourceQuantity(_appConfig.DEFAULT_REQUEST_CPU));
+            //     }
 
 
-                if (deployRequest.GpuRequirement == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.GpuOptions.Nvidia) {
-                    if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Any(limit => string.Equals(limit.Key, "nvidia.com/gpu", StringComparison.CurrentCultureIgnoreCase))) {
-                        yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Add("nvidia.com/gpu", new ResourceQuantity("1"));
-                    }
-                }
+            //     if (deployRequest.GpuRequirement == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.GpuOptions.Nvidia) {
+            //         if (!yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Any(limit => string.Equals(limit.Key, "nvidia.com/gpu", StringComparison.CurrentCultureIgnoreCase))) {
+            //             yamlDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Add("nvidia.com/gpu", new ResourceQuantity("1"));
+            //         }
+            //     }
 
-            }
+            // }
 
             return yamlDeployment;
         }

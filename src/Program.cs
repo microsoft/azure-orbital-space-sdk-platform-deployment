@@ -19,8 +19,12 @@ public class Program {
             services.AddSingleton<Utils.K8sClient>();
             services.AddSingleton<Utils.DownlinkUtil>();
             services.AddSingleton<Utils.TimeUtils>();
-            services.AddSingleton<Utils.SpaceFxChartUtil>();
+            services.AddSingleton<Utils.TemplateUtil>();
             services.AddHostedService<Services.ScheduleProcessor>(p => p.GetRequiredService<Services.ScheduleProcessor>());
+
+            services.AddSingleton<Core.IMessageHandler<MessageFormats.HostServices.Link.LinkResponse>, MessageHandler<MessageFormats.HostServices.Link.LinkResponse>>();
+            services.AddSingleton<Core.IMessageHandler<MessageFormats.Common.LogMessageResponse>, MessageHandler<MessageFormats.Common.LogMessageResponse>>();
+
 
         }).ConfigureLogging((logging) => {
             logging.AddProvider(new Microsoft.Extensions.Logging.SpaceFX.Logger.HostSvcLoggerProvider());

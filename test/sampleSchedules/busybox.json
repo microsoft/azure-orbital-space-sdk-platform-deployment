@@ -1,21 +1,11 @@
 [
     {
-        "RequestHeader": {
-            "CorrelationId": "e88f213e-3573-43fd-9661-ea63251682fc"
-        },
         "AppName": "busybox",
-        "NameSpace": "hostsvc",
+        "NameSpace": "payload-app",
         "AppGroupLabel": "ACME",
         "CustomerTrackingId": "abc123-456-789",
-        "MaxDuration": {
-            "Seconds": 120,
-            "Nanos": 0
-        },
+        "MaxDuration": "120s",
         "YamlFileContents": "busybox.yaml",
-        "DeployAction": 0,
-        "Priority": 1,
-        "AppContextString": null,
-        "AppContextFile": null,
-        "AppContextCase": 0
+        "DeployAction": "Apply"
     }
 ]
