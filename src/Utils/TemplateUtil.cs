@@ -34,10 +34,6 @@ public partial class Utils {
 
             Directory.CreateDirectory(_deploymentOutputDir);
 
-            // if (_appConfig.ENABLE_YAML_DEBUG) {
-            //         _logger.LogDebug("ENABLE_YAML_DEBUG = 'true'.  Outputting original yaml contents to '{yamlDestination}'.  (AppName: '{AppName}' / DeployAction: '{DeployAction}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')", Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_orig"), deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId);
-            //         File.WriteAllText(Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_orig"), deploymentItem.DeployRequest.YamlFileContents);
-            //     }
         }
 
         internal List<IKubernetesObject> GenerateKubernetesObjectsFromDeployment(MessageFormats.PlatformServices.Deployment.DeployResponse deploymentItem) {
@@ -65,11 +61,63 @@ public partial class Utils {
                 throw new NullReferenceException("Metadata.Name is null or empty");
             }
 
-            // Loop through and add annotations
-            foreach (KeyValuePair<string, string> kvp in GenerateAnnotations(origDeploymentItem)) {
+            Dictionary<string, string> annotations = GenerateAnnotations();
+            Dictionary<string, string> annotationsWithDapr = GenerateAnnotations(enableDapr: true);
+            Models.KubernetesObjects.ResourceDefinition resourceLimits = GenerateResourceLimits();
+
+            // Loop through and add annotations to the deployment and the Deployment Spec
+            foreach (KeyValuePair<string, string> kvp in annotations) {
                 if (!k8sDeployment.Metadata.Annotations.ContainsKey(kvp.Key)) k8sDeployment.Metadata.Annotations.Add(kvp.Key, kvp.Value);
                 if (!k8sDeployment.Spec.Template.Metadata.Annotations.ContainsKey(kvp.Key)) k8sDeployment.Spec.Template.Metadata.Annotations.Add(kvp.Key, kvp.Value);
             }
+
+            // if(k8sDeployment.Spec.Template.Spec.Containers.Count == 0) {
+            //     throw new NullReferenceException("Spec.Template.Spec.Containers.Count is 0");
+            // }
+
+            int containerInjectionTargetX = k8sDeployment.Spec.Template.Spec.Containers.IndexOf(k8sDeployment.Spec.Template.Spec.Containers.FirstOrDefault(_container => _container.Name == origDeploymentItem.DeployRequest.ContainerInjectionTarget));
+            if (containerInjectionTargetX == -1) containerInjectionTargetX = 0;
+
+            // Loop through and update the containers
+            for (int x = 0; x < k8sDeployment.Spec.Template.Spec.Containers.Count; x++) {
+                k8sDeployment.Spec.Template.Spec.Containers[x].Resources ??= new V1ResourceRequirements();
+                k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Limits ??= new Dictionary<string, ResourceQuantity>();
+                k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Requests ??= new Dictionary<string, ResourceQuantity>();
+
+                // Add the default value if it's missing
+                if (!k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Limits.Any(limit => string.Equals(limit.Key, "memory", StringComparison.CurrentCultureIgnoreCase))) {
+                    k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Limits.Add("memory", new ResourceQuantity(resourceLimits.Resources.Limits.Memory));
+                }
+
+                if (!k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Limits.Any(limit => string.Equals(limit.Key, "cpu", StringComparison.CurrentCultureIgnoreCase))) {
+                    k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Limits.Add("cpu", new ResourceQuantity(resourceLimits.Resources.Limits.Cpu));
+                }
+
+                // Add the default value if it's missing
+                if (!k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Requests.Any(request => string.Equals(request.Key, "memory", StringComparison.CurrentCultureIgnoreCase))) {
+                    k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Requests.Add("memory", new ResourceQuantity(resourceLimits.Resources.Requests.Memory));
+                }
+
+                if (!k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Requests.Any(request => string.Equals(request.Key, "cpu", StringComparison.CurrentCultureIgnoreCase))) {
+                    k8sDeployment.Spec.Template.Spec.Containers[x].Resources.Requests.Add("cpu", new ResourceQuantity(resourceLimits.Resources.Requests.Cpu));
+                }
+
+
+                // if (deployRequest.GpuRequirement == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.GpuOptions.Nvidia) {
+                //     if (!k8sDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Any(limit => string.Equals(limit.Key, "nvidia.com/gpu", StringComparison.CurrentCultureIgnoreCase))) {
+                //         k8sDeployment.Spec.Template.Spec.Containers[i].Resources.Limits.Add("nvidia.com/gpu", new ResourceQuantity("1"));
+                //     }
+                // }
+
+            }
+
+
+
+            // Loop through and add annotations to the deployment
+            // foreach (KeyValuePair<string, string> kvp in GenerateAnnotations(deploymentItem: origDeploymentItem, enableDapr: true)) {
+
+            //     if (!k8sDeployment.Metadata.Annotations.ContainsKey(kvp.Key)) k8sDeployment.Metadata.Annotations.Add(kvp.Key, kvp.Value);
+            // }
 
             return k8sDeployment;
         }
@@ -92,7 +140,7 @@ public partial class Utils {
                 RedirectStandardError = true
             };
 
-            _logger.LogDebug("Starting process: '{app} {arguments}'", startInfo.FileName, startInfo.Arguments);
+            _logger.LogDebug("Helm Template Command: '{app} {arguments}'", startInfo.FileName, startInfo.Arguments);
 
             using (Process process = new Process { StartInfo = startInfo }) {
                 process.Start();
@@ -101,6 +149,14 @@ public partial class Utils {
                 process.WaitForExit();
                 returnCode = process.ExitCode;
             }
+
+
+            if (_appConfig.ENABLE_YAML_DEBUG) {
+                string outputFile = Path.Combine(_deploymentOutputDir, $"templateOutput_{DateTime.Now.ToString("yyyyMMdd_HHmmss_fff")}{(returnCode == 0 ? "" : ".error")}.yaml");
+                _logger.LogDebug($"ENABLE_YAML_DEBUG = 'true'.  Outputting helm generated values to '{outputFile}'");
+                File.WriteAllText(outputFile, output);
+            }
+
 
             if (returnCode > 0) {
                 throw new ApplicationException($"Helm failed to generate requested template.  Output: {output}.  Error: {error}  Return Code: {returnCode}");
@@ -111,19 +167,45 @@ public partial class Utils {
             return output;
         }
 
-        public Dictionary<string, string> GenerateAnnotations(MessageFormats.PlatformServices.Deployment.DeployResponse deploymentItem) {
+        public Dictionary<string, string> GenerateAnnotations(bool enableDapr = false) {
             var templateRequest = new Dictionary<string, string> {
-                { "services.payloadapp.payloadapp.enabled", "true" },
-                { "services.payloadapp.payloadapp.annotations.enabled", "true" }
+                { "services.payloadapp.payloadappTemplate.enabled", "true" },
+                { "services.payloadapp.payloadappTemplate.annotations.enabled", "true" }
             };
 
-            var templateOutput = GenerateTemplate(templateRequest);
-            return string.IsNullOrEmpty(templateOutput) ? new Dictionary<string, string>() :
-                templateOutput
-                    .Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(line => line.Split(new[] { ':' }, 2))
-                    .Where(parts => parts.Length == 2)
-                    .ToDictionary(parts => parts[0].Trim(), parts => parts[1].Trim().Replace("\"", ""));
+            if (enableDapr) templateRequest.Add("services.payloadapp.payloadappTemplate.annotations.daprEnabled", "true");
+
+            var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
+                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.NullNamingConvention.Instance)
+                .IgnoreUnmatchedProperties()
+                .Build();
+
+            string templateYaml = GenerateTemplate(templateRequest);
+            Dictionary<string, string> returnDictionary = deserializer.Deserialize<Dictionary<string, string>>(templateYaml);
+
+            returnDictionary = returnDictionary.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value?.ToString() ?? ""
+            );
+
+            return returnDictionary;
+        }
+
+        public Models.KubernetesObjects.ResourceDefinition GenerateResourceLimits() {
+            var templateRequest = new Dictionary<string, string> {
+                { "services.payloadapp.payloadappTemplate.enabled", "true" },
+                { "services.payloadapp.payloadappTemplate.resources.enabled", "true" }
+            };
+
+            var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
+                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.LowerCaseNamingConvention.Instance) // Kubernetes YAML typically uses camelCase
+                .Build();
+
+
+            string templateYaml = GenerateTemplate(templateRequest);
+            Models.KubernetesObjects.ResourceDefinition returnValue = deserializer.Deserialize<Models.KubernetesObjects.ResourceDefinition>(templateYaml);
+
+            return returnValue;
         }
     }
 }

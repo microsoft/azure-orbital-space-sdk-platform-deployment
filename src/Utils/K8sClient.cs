@@ -20,6 +20,11 @@ public partial class Utils {
             _templateUtil = templateUtil;
             _deploymentOutputDir = Path.Combine(_client.GetXFerDirectories().Result.outbox_directory, "deployments");
 
+            if (_appConfig.PURGE_SCHEDULE_ON_BOOTUP && Directory.Exists(_deploymentOutputDir)) {
+                Directory.Delete(_deploymentOutputDir, true);
+            }
+
+
             Directory.CreateDirectory(_deploymentOutputDir);
 
             KubernetesClientConfiguration config = KubernetesClientConfiguration.BuildDefaultConfig();

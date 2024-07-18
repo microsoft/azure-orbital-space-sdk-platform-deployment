@@ -1,7 +1,5 @@
-using YamlDotNet.Serialization;
-
 namespace Microsoft.Azure.SpaceFx.PlatformServices.Deployment;
-public static class Models {
+public static partial class Models {
     public class APP_CONFIG : Core.APP_CONFIG {
         [Flags]
         [JsonConverter(typeof(JsonStringEnumConverter))]
