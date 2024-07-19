@@ -152,6 +152,12 @@ public partial class Utils {
         private void PatchViaYamlObject(IKubernetesObject yamlObject) {
             try {
                 switch (yamlObject) {
+                    case V1PersistentVolumeClaim pvc:
+                        _k8sClient.PatchNamespacedPersistentVolumeClaim(new V1Patch(pvc, V1Patch.PatchType.MergePatch), name: pvc.Metadata.Name, namespaceParameter: pvc.Metadata.NamespaceProperty);
+                        break;
+                    case V1PersistentVolume pv:
+                        _k8sClient.PatchPersistentVolume(new V1Patch(pv, V1Patch.PatchType.MergePatch), name: pv.Metadata.Name);
+                        break;
                     case V1ConfigMap cm:
                         _k8sClient.PatchNamespacedConfigMap(new V1Patch(cm, V1Patch.PatchType.MergePatch), name: cm.Metadata.Name, namespaceParameter: cm.Metadata.NamespaceProperty);
                         break;
@@ -207,6 +213,12 @@ public partial class Utils {
         private void DeleteViaYamlObject(IKubernetesObject yamlObject) {
             try {
                 switch (yamlObject) {
+                    case V1PersistentVolumeClaim pvc:
+                        _k8sClient.DeleteNamespacedPersistentVolumeClaim(name: pvc.Metadata.Name, namespaceParameter: pvc.Metadata.NamespaceProperty);
+                        break;
+                    case V1PersistentVolume pv:
+                        _k8sClient.DeletePersistentVolume(name: pv.Metadata.Name);
+                        break;
                     case V1ConfigMap cm:
                         if (cm.Metadata == null || string.IsNullOrEmpty(cm.Metadata.NamespaceProperty)) { throw new NullReferenceException("Metadata.NamespaceProperty is null or empty"); }
                         _k8sClient.DeleteNamespacedConfigMap(name: cm.Metadata.Name, namespaceParameter: cm.Metadata.NamespaceProperty);
@@ -252,6 +264,12 @@ public partial class Utils {
         private void CreateViaYamlObject(IKubernetesObject yamlObject) {
             try {
                 switch (yamlObject) {
+                    case V1PersistentVolume pv:
+                        _k8sClient.CreatePersistentVolume(body: pv);
+                        break;
+                    case V1PersistentVolumeClaim pvc:
+                        _k8sClient.CreateNamespacedPersistentVolumeClaim(body: pvc, namespaceParameter: pvc.Metadata.NamespaceProperty);
+                        break;
                     case V1Namespace ns:
                         _k8sClient.CreateNamespace(body: ns);
                         break;
