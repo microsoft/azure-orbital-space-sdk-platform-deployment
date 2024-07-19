@@ -37,10 +37,11 @@ public partial class Utils {
         }
 
         internal List<IKubernetesObject> GenerateKubernetesObjectsFromDeployment(MessageFormats.PlatformServices.Deployment.DeployResponse deploymentItem) {
-            List<IKubernetesObject> returnList = new();
+            List<IKubernetesObject> returnList = new() {
+                GenerateAppSettings(deploymentItem),
+                GenerateServiceAccount(deploymentItem)
+            };
 
-            // Add the appsettings to the deployment
-            returnList.Add(GenerateAppSettings(deploymentItem));
             GeneratePersistentVolumes(deploymentItem).ForEach(pv => returnList.Add(pv));
             GeneratePersistentVolumeClaims(deploymentItem).ForEach(pvc => returnList.Add(pvc));
 

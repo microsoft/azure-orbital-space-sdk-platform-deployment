@@ -116,9 +116,15 @@ public partial class Utils {
 
                 List<IKubernetesObject> kubernetesObjects = _templateUtil.GenerateKubernetesObjectsFromDeployment(deploymentItem);
 
+                V1PersistentVolumeList allVolumes = _k8sClient.ListPersistentVolumeAsync().Result;
+                V1PersistentVolumeClaimList allVolumeClaims = _k8sClient.ListPersistentVolumeClaimForAllNamespacesAsync().Result;
+                V1ServiceAccountList allServiceAccounts = _k8sClient.ListServiceAccountForAllNamespacesAsync().Result;
+
                 // Loop through the yaml objects and start deploying them
                 for (int itemX = 0; itemX < kubernetesObjects.Count; itemX++) {
                     IKubernetesObject kubernetesObject = kubernetesObjects[itemX];
+
+
 
                     if (_appConfig.ENABLE_YAML_DEBUG) {
                         _logger.LogDebug("ENABLE_YAML_DEBUG = 'true'.  Outputting generated file to '{yamlDestination}'.  (AppName: '{AppName}' / DeployAction: '{DeployAction}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')",
@@ -132,6 +138,25 @@ public partial class Utils {
                     }
                     switch (deploymentItem.DeployRequest.DeployAction) {
                         case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Apply:
+                            if ((kubernetesObject is V1PersistentVolumeClaim volumeClaim) && allVolumeClaims.Items.Any(pvc => pvc.Name().Equals(volumeClaim.Name(), StringComparison.InvariantCultureIgnoreCase))) {
+                                if (volumeClaim.Namespace().Equals(volumeClaim.Namespace(), StringComparison.InvariantCultureIgnoreCase)) {
+                                    _logger.LogDebug("Found pre-existing PersistentVolumeClaim '{volumeName}'. Nothing to do", volumeClaim.Name());
+                                    break;
+                                }
+                                _logger.LogDebug("Found pre-existing PersistentVolumeClaim '{volumeName}' in wrong namespace '{volumeNameSpace}'.  Deleting old claim to allow new provision", volumeClaim.Name(), volumeClaim.Namespace());
+                                _k8sClient.DeleteNamespacedPersistentVolumeClaim(name: volumeClaim.Name(), namespaceParameter: volumeClaim.Namespace());
+                            }
+
+                            if ((kubernetesObject is V1PersistentVolume volume) && allVolumes.Items.Any(pvv => pvv.Name().Equals(volume.Name(), StringComparison.InvariantCultureIgnoreCase))) {
+                                _logger.LogDebug("Found pre-existing PersistentVolume '{volumeName}'. Nothing to do", volume.Name());
+                                break;
+                            }
+
+                            if ((kubernetesObject is V1ServiceAccount serviceAccount) && allServiceAccounts.Items.Any(svc => svc.Name().Equals(serviceAccount.Name(), StringComparison.InvariantCultureIgnoreCase) && svc.Namespace().Equals(serviceAccount.Namespace(), StringComparison.InvariantCultureIgnoreCase))) {
+                                _logger.LogDebug("Found pre-existing ServiceAccount '{serviceAccount}'. Nothing to do", serviceAccount.Name());
+                                break;
+                            }
+
                             PatchViaYamlObject(kubernetesObject);
                             break;
                         case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Delete:
