@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: busybox
-  namespace: hostsvc
+  namespace: payload-app
   labels:
     app: busybox
 spec:

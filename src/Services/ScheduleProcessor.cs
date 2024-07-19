@@ -70,6 +70,9 @@ public partial class Services {
 
                                 File.Move(file, file + ".processed");
                                 downlinkFileName = file + ".processed";
+                            } catch (FileNotFoundException fileEx) {
+                                _logger.LogWarning("Detected a missing file '{file}'.  Likely hasn't finished uploaded.  Will retry. ", fileEx.FileName);
+                                return deployResponses; // This'll be empty
                             } catch (Utils.NotAScheduleFileException notAScheduleFileEx) {
                                 _logger.LogInformation("Detected a json file that isn't a schedule file.  {exceptionMessage}", notAScheduleFileEx.Message);
                                 return deployResponses; // This'll be empty
@@ -238,6 +241,9 @@ public partial class Services {
 
                     returnDeployItems.Add(_response);
                 }
+            } catch (FileNotFoundException fileEx) {
+                _logger.LogError("File '{file}' found.  Likely hasnt finished uploading.  Will retry.", fileEx.FileName);
+                throw;
             } catch (DataException dataEx) {
                 _logger.LogError("Item #'{itemX}' in '{file}' is invalid.  Rejecting entire schedule file.  Error: '{error}'.  Please re-upload for reprocessing", itemCount, scheduleFilePath, dataEx.Message);
                 throw;

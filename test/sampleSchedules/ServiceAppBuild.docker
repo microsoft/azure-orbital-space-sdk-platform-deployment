@@ -17,6 +17,6 @@ ENV SERVICE_NAME=${SERVICE_NAME}
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 
 # Copy the minimum files needed to run the service
-COPY --from=svc-base --chmod=0755 /workspaces/${SERVICE_NAME} /workspaces/${SERVICE_NAME}
+COPY --from=svc-base --chmod=0755 /workspace/${SERVICE_NAME} /workspace/${SERVICE_NAME}
 USER root
-WORKDIR /workspaces/${SERVICE_NAME}
+WORKDIR /workspace/${SERVICE_NAME}

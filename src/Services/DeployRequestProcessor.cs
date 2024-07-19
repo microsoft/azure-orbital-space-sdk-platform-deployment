@@ -16,6 +16,7 @@ public partial class Services {
         private readonly Utils.TimeUtils _timeUtils;
         private string _scheduleImportDirectory;
         private string _regctlApp;
+
         private readonly ConcurrentDictionary<Guid, MessageFormats.PlatformServices.Deployment.DeployResponse> _deployRequestCache;
         public DeployRequestProcessor(ILogger<DeployRequestProcessor> logger, IServiceProvider serviceProvider, IOptions<Models.APP_CONFIG> appConfig, Core.Services.PluginLoader pluginLoader, Core.Client client, PluginDelegates pluginDelegates, Utils.K8sClient k8sClient, Utils.DownlinkUtil downlinkUtil, Utils.TimeUtils timeUtil) {
             _logger = logger;
@@ -27,11 +28,13 @@ public partial class Services {
             _k8sClient = k8sClient;
             _downlinkUtil = downlinkUtil;
             _timeUtils = timeUtil;
+
             _deployRequestCache = new ConcurrentDictionary<Guid, MessageFormats.PlatformServices.Deployment.DeployResponse>();
 
             _scheduleImportDirectory = Path.Combine(_client.GetXFerDirectories().Result.inbox_directory, _appConfig.SCHEDULE_IMPORT_DIRECTORY);
 
             _regctlApp = Path.Combine(_client.GetXFerDirectories().Result.root_directory, "tmp", "regctl", "regctl");
+
 
             if (File.Exists(_regctlApp)) {
                 _logger.LogInformation("regctl found at '{regctlApp}'", _regctlApp);
@@ -42,7 +45,6 @@ public partial class Services {
 
             if (_appConfig.PURGE_SCHEDULE_ON_BOOTUP) {
                 _client.ClearCache();
-                if (Directory.Exists(Path.Combine(_client.GetXFerDirectories().Result.outbox_directory, "deploymentResults"))) Directory.Delete(Path.Combine(_client.GetXFerDirectories().Result.outbox_directory, "deploymentResults"), true);
             }
 
             PopulateCacheFromDisk();

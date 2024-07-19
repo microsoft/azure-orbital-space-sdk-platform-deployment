@@ -19,7 +19,8 @@
             "args": [
                 "/spacefx-dev/debugShim-deploy.sh",
                 "--debug_shim",
-                "${DEBUG_SHIM_HOST}"
+                "${DEBUG_SHIM_HOST}",
+                "--disable_plugin_configs"
             ],
             "presentation": {
                 "echo": true,
