@@ -17,8 +17,7 @@
             "app_name": "platform-deployment",
             "app_type": "sdk-service",
             "addl_debug_shim_suffixes": "client",
-            "debug_shim_post_yaml_file": "/workspace/platform-deployment/.vscode/debugShim-svcAcct-clusterAdmin.yaml",
-            "smb_enabled_in_cluster": true
+            "debug_shim_post_yaml_file": "/workspace/platform-deployment/.vscode/debugShim-svcAcct-clusterAdmin.yaml"
         }
     },
     "customizations": {
