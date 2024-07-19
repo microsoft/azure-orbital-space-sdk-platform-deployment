@@ -69,6 +69,10 @@ public partial class Utils {
             k8sDeployment.Metadata.Name = deploymentItem.DeployRequest.AppName;
             k8sDeployment.Metadata.SetNamespace(deploymentItem.DeployRequest.NameSpace);
 
+            k8sDeployment.Spec.Template.Metadata.Name = $"{deploymentItem.DeployRequest.AppName}";
+            k8sDeployment.Spec.Template.Metadata.SetNamespace(deploymentItem.DeployRequest.NameSpace);
+            k8sDeployment.Spec.Template.Spec.ServiceAccountName = $"{deploymentItem.DeployRequest.AppName}";
+
             Dictionary<string, string> template_annotations = GenerateAnnotations(deploymentItem);
             Dictionary<string, string> template_annotationsWithDapr = GenerateAnnotations(deploymentItem, enableDapr: true);
             Dictionary<string, string> template_labels = GenerateLabels(deploymentItem);
@@ -419,6 +423,25 @@ public partial class Utils {
             string templateYaml = GenerateTemplate(templateRequest);
 
             List<V1PersistentVolume> returnValue = KubernetesYaml.LoadAllFromString(templateYaml).OfType<V1PersistentVolume>().ToList();
+
+            if (returnValue == null)
+                throw new ApplicationException("Failed to generate AppSettings ConfigMap");
+
+            return returnValue;
+        }
+
+        public V1ServiceAccount GenerateServiceAccount(MessageFormats.PlatformServices.Deployment.DeployResponse deploymentItem) {
+            _logger.LogDebug("Generating ServiceAccount template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                deploymentItem.DeployRequest.AppName,
+                deploymentItem.ResponseHeader.TrackingId,
+                deploymentItem.ResponseHeader.CorrelationId);
+
+            Dictionary<string, string> templateRequest = StandardTemplateRequestItems(deploymentItem);
+            templateRequest.Add("services.payloadapp.payloadappTemplate.serviceAccount.enabled", "true");
+
+            string templateYaml = GenerateTemplate(templateRequest);
+
+            V1ServiceAccount? returnValue = KubernetesYaml.LoadAllFromString(templateYaml).OfType<V1ServiceAccount>().FirstOrDefault();
 
             if (returnValue == null)
                 throw new ApplicationException("Failed to generate AppSettings ConfigMap");
