@@ -1,7 +1,5 @@
-using YamlDotNet.Serialization;
-
 namespace Microsoft.Azure.SpaceFx.PlatformServices.Deployment;
-public static class Models {
+public static partial class Models {
     public class APP_CONFIG : Core.APP_CONFIG {
         [Flags]
         [JsonConverter(typeof(JsonStringEnumConverter))]
@@ -48,7 +46,6 @@ public static class Models {
         public string CONTAINER_REGISTRY { get; set; }
         public string CONTAINER_REGISTRY_INTERNAL { get; set; }
         public string SCHEDULE_IMPORT_DIRECTORY { get; set; }
-        public string DAPR_ANNOTATIONS { get; set; }
         public string DEFAULT_LIMIT_MEMORY { get; set; }
         public string DEFAULT_LIMIT_CPU { get; set; }
         public string DEFAULT_REQUEST_MEMORY { get; set; }
@@ -56,14 +53,7 @@ public static class Models {
         public string FILESERVER_APP_CRED_NAME { get; set; }
         public string FILESERVER_CRED_NAME { get; set; }
         public string FILESERVER_CRED_NAMESPACE { get; set; }
-        public string FILESERVER_PERSISTENT_VOLUMES { get; set; }
-        public string FILESERVER_PERSISTENT_VOLUMECLAIMS { get; set; }
-        public string FILESERVER_CLIENT_VOLUME_MOUNTS { get; set; }
-        public string FILESERVER_CLIENT_VOLUMES { get; set; }
-        public string PAYLOAD_APP_ANNOTATIONS { get; set; }
-        public string PAYLOAD_APP_CONFIG { get; set; }
-        public string PAYLOAD_APP_LABELS { get; set; }
-        public string PAYLOAD_APP_ENVIRONMENTVARIABLES { get; set; }
+        public bool FILESERVER_SMB_ENABLED { get; set; }
         public TimeSpan DEFAULT_MAX_DURATION { get; set; }
 
         public APP_CONFIG() : base() {
@@ -90,19 +80,9 @@ public static class Models {
             FILESERVER_APP_CRED_NAME = Core.GetConfigSetting("fileserverappcredname").Result;
             FILESERVER_CRED_NAME = Core.GetConfigSetting("fileservercredname").Result;
             FILESERVER_CRED_NAMESPACE = Core.GetConfigSetting("fileservercrednamespace").Result;
+            FILESERVER_SMB_ENABLED = bool.Parse(Core.GetConfigSetting("fileserversmb").Result);
 
-            FILESERVER_PERSISTENT_VOLUMES = Core.GetConfigSetting("fileserverclientpv").Result;
-            FILESERVER_PERSISTENT_VOLUMECLAIMS = Core.GetConfigSetting("fileserverclientpvc").Result;
 
-            FILESERVER_CLIENT_VOLUMES = Core.GetConfigSetting("fileServerclientvolumes").Result;
-            FILESERVER_CLIENT_VOLUME_MOUNTS = Core.GetConfigSetting("fileServerclientvolumemounts").Result;
-
-            DAPR_ANNOTATIONS = Core.GetConfigSetting("daprannotations").Result;
-
-            PAYLOAD_APP_ANNOTATIONS = Core.GetConfigSetting("payloadappannotations").Result;
-            PAYLOAD_APP_CONFIG = Core.GetConfigSetting("payloadappconfig").Result;
-            PAYLOAD_APP_LABELS = Core.GetConfigSetting("payloadapplabels").Result;
-            PAYLOAD_APP_ENVIRONMENTVARIABLES = Core.GetConfigSetting("payloadappenvironmentvariables").Result;
 
             if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Development" || Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "IntegrationTest") {
                 ENABLE_YAML_DEBUG = true;

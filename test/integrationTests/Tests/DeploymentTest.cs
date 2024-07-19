@@ -94,10 +94,10 @@ public class DeploymentTests : IClassFixture<TestSharedContext> {
         string scheduleDir = Path.Combine((await TestSharedContext.SPACEFX_CLIENT.GetXFerDirectories()).outbox_directory, "schedule");
         Directory.CreateDirectory(scheduleDir);
 
-        File.Copy("/workspaces/platform-deployment/test/sampleSchedules/integration-test-schedule.json", Path.Combine(scheduleDir, "integration-test-deployment.json"), overwrite: true);
-        File.Copy("/workspaces/platform-deployment/test/sampleSchedules/integration-test-deployment.yaml", Path.Combine(scheduleDir, "integration-test-deployment.yaml"), overwrite: true);
-        File.Copy("/workspaces/platform-deployment/test/sampleSchedules/pubsub-csharp-subscriber.tar", Path.Combine(scheduleDir, "pubsub-csharp-subscriber.tar"), overwrite: true);
-        File.Copy("/workspaces/platform-deployment/test/sampleSchedules/astronaut.jpg", Path.Combine(scheduleDir, "astronaut.jpg"), overwrite: true);
+        File.Copy("/workspace/platform-deployment/test/sampleSchedules/integration-test-schedule.json", Path.Combine(scheduleDir, "integration-test-deployment.json"), overwrite: true);
+        File.Copy("/workspace/platform-deployment/test/sampleSchedules/integration-test-deployment.yaml", Path.Combine(scheduleDir, "integration-test-deployment.yaml"), overwrite: true);
+        File.Copy("/workspace/platform-deployment/test/sampleSchedules/pubsub-csharp-subscriber.tar", Path.Combine(scheduleDir, "pubsub-csharp-subscriber.tar"), overwrite: true);
+        File.Copy("/workspace/platform-deployment/test/sampleSchedules/astronaut.jpg", Path.Combine(scheduleDir, "astronaut.jpg"), overwrite: true);
 
         Console.WriteLine($"Sending '{tarFile.GetType().Name}' (TrackingId: '{tarFile.RequestHeader.TrackingId}')");
         await TestSharedContext.SPACEFX_CLIENT.DirectToApp("hostsvc-link", tarFile);
