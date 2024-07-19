@@ -26,8 +26,13 @@ public class MessageSender : BackgroundService {
 
             System.IO.Directory.CreateDirectory(OUTBOX);
 
-            System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/busybox.json", string.Format($"{OUTBOX}/busybox.json"), overwrite: true);
-            System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/busybox.yaml", string.Format($"{OUTBOX}/busybox.yaml"), overwrite: true);
+            // System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/busybox.json", string.Format($"{OUTBOX}/busybox.json"), overwrite: true);
+            // System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/busybox.yaml", string.Format($"{OUTBOX}/busybox.yaml"), overwrite: true);
+
+            System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/integration-test-deployment.yaml", string.Format($"{OUTBOX}/integration-test-deployment.yaml"), overwrite: true);
+            System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/integration-test-schedule.json", string.Format($"{OUTBOX}/integration-test-schedule.json"), overwrite: true);
+            System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/pubsub-csharp-subscriber.tar", string.Format($"{OUTBOX}/pubsub-csharp-subscriber.tar"), overwrite: true);
+            System.IO.File.Copy("/workspace/platform-deployment/test/sampleSchedules/astronaut.jpg", string.Format($"{OUTBOX}/astronaut.jpg"), overwrite: true);
 
             await MoveScheduleArtifacts();
         }
