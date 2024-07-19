@@ -91,6 +91,15 @@ public partial class Utils {
             int containerInjectionTargetX = k8sDeployment.Spec.Template.Spec.Containers.IndexOf(k8sDeployment.Spec.Template.Spec.Containers.FirstOrDefault(_container => _container.Name == origDeploymentItem.DeployRequest.ContainerInjectionTarget));
             if (containerInjectionTargetX == -1) containerInjectionTargetX = 0;
 
+            // Add the volume for the appSettings to the target container injection
+            k8sDeployment.Spec.Template.Spec.Volumes ??= new List<V1Volume>();
+            k8sDeployment.Spec.Template.Spec.Volumes.Add(new V1Volume() { Name = template_appSettingsVolume.Name, ConfigMap = new V1ConfigMapVolumeSource() { Name = template_appSettingsVolume.ConfigMap.Name } });
+
+            // Add the volume mounts for the appSettings to the target container injection
+            k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].VolumeMounts ??= new List<V1VolumeMount>();
+            k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].VolumeMounts.Add(new V1VolumeMount() { Name = template_appSettingsVolumeMount.Name, MountPath = template_appSettingsVolumeMount.MountPath });
+
+
             k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env ??= new List<V1EnvVar>();
 
             foreach (KeyValuePair<string, string> kvp in template_environmentVariables) {
