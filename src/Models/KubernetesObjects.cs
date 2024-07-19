@@ -34,6 +34,13 @@ public static partial class Models {
             }
         }
 
+        public class VolumeMountRoot {
+            public List<V1VolumeMount> VolumeMounts { get; set; }
+            public VolumeMountRoot() {
+                VolumeMounts = new List<V1VolumeMount>();
+            }
+        }
+
         public class VolumeRoot {
             public List<V1Volume> Volumes { get; set; }
             public VolumeRoot() {

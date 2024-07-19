@@ -53,7 +53,6 @@ public partial class Utils {
         private MessageFormats.PlatformServices.Deployment.DeployResponse DeployToKubernetes(MessageFormats.PlatformServices.Deployment.DeployResponse deploymentItem) {
             string tokensizedYamlObject = "";
             IKubernetesObject? processed_kubernetesObject;
-            int itemX = 0;
 
             _logger.LogInformation("Deployment Started.  (AppName: '{AppName}' / DeployAction: '{DeployAction}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')", deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId);
             // _logger.LogInformation("Passing {requestType} and {responseType} to plugins (trackingId: '{trackingId}' / correlationId: '{correlationId}')", deploymentItem.GetType().Name, returnResponse.GetType().Name, deployRequest.RequestHeader.TrackingId, deployRequest.RequestHeader.CorrelationId);
@@ -117,11 +116,28 @@ public partial class Utils {
 
                 List<IKubernetesObject> kubernetesObjects = _templateUtil.GenerateKubernetesObjectsFromDeployment(deploymentItem);
 
-                // Loop through the yaml objects from the string
-                foreach (var input_kubernetesObject in kubernetesObjects) {
+                // Loop through the yaml objects and start deploying them
+                for (int itemX = 0; itemX < kubernetesObjects.Count; itemX++) {
+                    IKubernetesObject kubernetesObject = kubernetesObjects[itemX];
 
+                    if (_appConfig.ENABLE_YAML_DEBUG) {
+                        _logger.LogDebug("ENABLE_YAML_DEBUG = 'true'.  Outputting generated file to '{yamlDestination}'.  (AppName: '{AppName}' / DeployAction: '{DeployAction}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')", itemX.ToString(), Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_item" + itemX.ToString() + "_post"), deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId);
+                        File.WriteAllText(Path.Combine(_deploymentOutputDir, deploymentItem.DeployRequest.RequestHeader.TrackingId + "_post_" + itemX.ToString() + "_post"), KubernetesYaml.Serialize(kubernetesObject));
+                    }
+                    switch (deploymentItem.DeployRequest.DeployAction) {
+                        case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Apply:
+                            PatchViaYamlObject(kubernetesObject);
+                            break;
+                        case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Delete:
+                            DeleteViaYamlObject(kubernetesObject);
+                            break;
+                        case MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Create:
+                            CreateViaYamlObject(kubernetesObject);
+                            break;
+                        default:
+                            throw new Exception(string.Format($"Unknown DeployAction: {deploymentItem.DeployRequest.DeployAction}"));
+                    }
                 }
-
                 deploymentItem.ResponseHeader.Status = MessageFormats.Common.StatusCodes.Successful;
             } catch (Exception ex) {
                 _logger.LogError("Failed to deploy action '{action}'.  Error: {ex}  (trackingId: '{trackingId}' / correlationId: '{correlationId}')",
