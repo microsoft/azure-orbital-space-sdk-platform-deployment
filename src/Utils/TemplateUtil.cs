@@ -68,8 +68,7 @@ public partial class Utils {
             Dictionary<string, string> template_labels = GenerateLabels(origDeploymentItem);
             Dictionary<string, string> template_environmentVariables = GenerateEnvironmentVariables(origDeploymentItem);
             Models.KubernetesObjects.ResourceDefinition template_resourceLimits = GenerateResourceLimits(origDeploymentItem);
-            Models.KubernetesObjects.ConfigVolume template_appSettingsVolume = GenerateAppSettingsVolume(origDeploymentItem);
-            Models.KubernetesObjects.VolumeConfig template_appSettingsVolumeMount = GenerateAppSettingsVolumeMount(origDeploymentItem);
+            List<V1Volume> template_volumes = GenerateVolumes(origDeploymentItem);
 
 
             // Loop through and add annotations to the deployment and the Deployment Spec
@@ -92,12 +91,12 @@ public partial class Utils {
             if (containerInjectionTargetX == -1) containerInjectionTargetX = 0;
 
             // Add the volume for the appSettings to the target container injection
-            k8sDeployment.Spec.Template.Spec.Volumes ??= new List<V1Volume>();
-            k8sDeployment.Spec.Template.Spec.Volumes.Add(new V1Volume() { Name = template_appSettingsVolume.Name, ConfigMap = new V1ConfigMapVolumeSource() { Name = template_appSettingsVolume.ConfigMap.Name } });
+            // k8sDeployment.Spec.Template.Spec.Volumes ??= new List<V1Volume>();
+            // k8sDeployment.Spec.Template.Spec.Volumes.Add(new V1Volume() { Name = template_appSettingsVolume.Name, ConfigMap = new V1ConfigMapVolumeSource() { Name = template_appSettingsVolume.ConfigMap.Name } });
 
-            // Add the volume mounts for the appSettings to the target container injection
-            k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].VolumeMounts ??= new List<V1VolumeMount>();
-            k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].VolumeMounts.Add(new V1VolumeMount() { Name = template_appSettingsVolumeMount.Name, MountPath = template_appSettingsVolumeMount.MountPath });
+            // // Add the volume mounts for the appSettings to the target container injection
+            // k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].VolumeMounts ??= new List<V1VolumeMount>();
+            // k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].VolumeMounts.Add(new V1VolumeMount() { Name = template_appSettingsVolumeMount.Name, MountPath = template_appSettingsVolumeMount.MountPath });
 
 
             k8sDeployment.Spec.Template.Spec.Containers[containerInjectionTargetX].Env ??= new List<V1EnvVar>();
@@ -207,6 +206,11 @@ public partial class Utils {
         }
 
         public Dictionary<string, string> GenerateAnnotations(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem, bool enableDapr = false) {
+            _logger.LogDebug("Generating annotations template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                origDeploymentItem.DeployRequest.AppName,
+                origDeploymentItem.ResponseHeader.TrackingId,
+                origDeploymentItem.ResponseHeader.CorrelationId);
+
             Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
             templateRequest.Add("services.payloadapp.payloadappTemplate.annotations.enabled", "true");
 
@@ -230,6 +234,11 @@ public partial class Utils {
         }
 
         public Dictionary<string, string> GenerateLabels(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem) {
+            _logger.LogDebug("Generating labels template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                origDeploymentItem.DeployRequest.AppName,
+                origDeploymentItem.ResponseHeader.TrackingId,
+                origDeploymentItem.ResponseHeader.CorrelationId);
+
             Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
             templateRequest.Add("services.payloadapp.payloadappTemplate.labels.enabled", "true");
 
@@ -251,6 +260,11 @@ public partial class Utils {
         }
 
         public Dictionary<string, string> GenerateEnvironmentVariables(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem) {
+            _logger.LogDebug("Generating environment variables template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                origDeploymentItem.DeployRequest.AppName,
+                origDeploymentItem.ResponseHeader.TrackingId,
+                origDeploymentItem.ResponseHeader.CorrelationId);
+
             Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
             templateRequest.Add("services.payloadapp.payloadappTemplate.environmentVariables.enabled", "true");
 
@@ -271,6 +285,11 @@ public partial class Utils {
         }
 
         public Models.KubernetesObjects.ResourceDefinition GenerateResourceLimits(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem) {
+            _logger.LogDebug("Generating resource limits template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                origDeploymentItem.DeployRequest.AppName,
+                origDeploymentItem.ResponseHeader.TrackingId,
+                origDeploymentItem.ResponseHeader.CorrelationId);
+
             Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
             templateRequest.Add("services.payloadapp.payloadappTemplate.resources.enabled", "true");
 
@@ -286,9 +305,13 @@ public partial class Utils {
         }
 
         public V1ConfigMap GenerateAppSettings(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem) {
+            _logger.LogDebug("Generating appsettings template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                origDeploymentItem.DeployRequest.AppName,
+                origDeploymentItem.ResponseHeader.TrackingId,
+                origDeploymentItem.ResponseHeader.CorrelationId);
+
             Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
             templateRequest.Add("services.payloadapp.payloadappTemplate.appsettings.enabled", "true");
-
 
             string templateYaml = GenerateTemplate(templateRequest);
 
@@ -302,31 +325,28 @@ public partial class Utils {
             return returnValue;
         }
 
-        public Models.KubernetesObjects.ConfigVolume GenerateAppSettingsVolume(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem) {
-            Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
-            templateRequest.Add("services.payloadapp.payloadappTemplate.appsettings.volumeEnabled", "true");
+        public List<V1Volume> GenerateVolumes(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem) {
+            _logger.LogDebug("Generating volumes template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                origDeploymentItem.DeployRequest.AppName,
+                origDeploymentItem.ResponseHeader.TrackingId,
+                origDeploymentItem.ResponseHeader.CorrelationId);
 
-            string templateYaml = GenerateTemplate(templateRequest);
+
+            Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
+            templateRequest.Add("services.payloadapp.payloadappTemplate.fileServer.volumesEnabled", "true");
 
             var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
-                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance) // Adjust if your YAML uses a different naming convention
-                .Build();
-
-            return deserializer.Deserialize<Models.KubernetesObjects.ConfigVolume>(templateYaml);
-        }
-
-        public Models.KubernetesObjects.VolumeConfig GenerateAppSettingsVolumeMount(MessageFormats.PlatformServices.Deployment.DeployResponse origDeploymentItem) {
-            Dictionary<string, string> templateRequest = StandardTemplateRequestItems(origDeploymentItem);
-            templateRequest.Add("services.payloadapp.payloadappTemplate.appsettings.volumeMountEnabled", "true");
+            .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance) // Adjust the naming convention as needed
+            .Build();
 
 
             string templateYaml = GenerateTemplate(templateRequest);
 
-            var deserializer = new YamlDotNet.Serialization.DeserializerBuilder()
-                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.CamelCaseNamingConvention.Instance) // Adjust if your YAML uses a different naming convention
-                .Build();
+            Models.KubernetesObjects.VolumeRoot volumeRoot = deserializer.Deserialize<Models.KubernetesObjects.VolumeRoot>(templateYaml);
 
-            return deserializer.Deserialize<Models.KubernetesObjects.VolumeConfig>(templateYaml);
+            List<V1Volume> volumes = volumeRoot.Volumes;
+
+            return volumeRoot.Volumes;
         }
     }
 }

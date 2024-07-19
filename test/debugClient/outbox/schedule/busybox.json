@@ -1,0 +1,11 @@
+[
+    {
+        "AppName": "busybox",
+        "NameSpace": "payload-app",
+        "AppGroupLabel": "ACME",
+        "CustomerTrackingId": "abc123-456-789",
+        "MaxDuration": "120s",
+        "YamlFileContents": "busybox.yaml",
+        "DeployAction": "Apply"
+    }
+]

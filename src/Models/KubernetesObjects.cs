@@ -34,33 +34,33 @@ public static partial class Models {
             }
         }
 
-        public class ConfigVolume {
-            public string Name { get; set; }
-            public ConfigMap ConfigMap { get; set; }
-            public ConfigVolume() {
-                ConfigMap = new ConfigMap();
-                Name = "";
+        public class VolumeRoot {
+            public List<V1Volume> Volumes { get; set; }
+            public VolumeRoot() {
+                Volumes = new List<V1Volume>();
+            }
+
+            public class ConfigMapVolumeSource {
+                public string Name { get; set; }
+                public ConfigMapVolumeSource() {
+                    Name = "";
+                }
+            }
+
+            public class SecretVolumeSource {
+                public string SecretName { get; set; }
+                public SecretVolumeSource() {
+                    SecretName = "";
+                }
+            }
+
+            public class PersistentVolumeClaimVolumeSource {
+                public string ClaimName { get; set; }
+                public PersistentVolumeClaimVolumeSource() {
+                    ClaimName = "";
+                }
             }
         }
-
-        public class ConfigMap {
-            public string Name { get; set; }
-            public ConfigMap() {
-                Name = "";
-            }
-        }
-
-        public class VolumeConfig {
-            public string Name { get; set; }
-            public string MountPath { get; set; }
-
-            public VolumeConfig() {
-                Name = "";
-                MountPath = "";
-            }
-        }
-
-
     }
 
 }
