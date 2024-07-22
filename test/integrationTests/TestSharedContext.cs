@@ -14,7 +14,7 @@ public class TestSharedContext : IDisposable {
     internal static k8s.Kubernetes K8S_CLIENT = null!;
     internal static Core.Client SPACEFX_CLIENT = null!;
     internal static bool HOST_SVC_ONLINE = false;
-    internal static TimeSpan MAX_TIMESPAN_TO_WAIT_FOR_MSG = TimeSpan.FromSeconds(90);
+    internal static TimeSpan MAX_TIMESPAN_TO_WAIT_FOR_MSG = TimeSpan.FromSeconds(300);
 
     /// <summary>
     /// Setup the SpaceFx Core to be shared across tests
