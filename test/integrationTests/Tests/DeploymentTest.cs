@@ -13,7 +13,7 @@ public class DeploymentTests : IClassFixture<TestSharedContext> {
     [Fact]
     public async Task DeployAnApp() {
         const string testName = nameof(DeployAnApp);
-        bool podFound = false;
+        k8s.Models.V1Pod? integrationPod = null;
         DateTime maxTimeToWait = DateTime.Now.Add(TestSharedContext.MAX_TIMESPAN_TO_WAIT_FOR_MSG);
         MessageFormats.HostServices.Link.LinkResponse? jsonFileResponse = null;
         MessageFormats.HostServices.Link.LinkResponse? yamlFileResponse = null;
@@ -27,8 +27,8 @@ public class DeploymentTests : IClassFixture<TestSharedContext> {
 
         var result = await TestSharedContext.K8S_CLIENT.CoreV1.ListPodForAllNamespacesWithHttpMessagesAsync(allowWatchBookmarks: false, watch: false, pretty: true);
         podList = result.Body as k8s.Models.V1PodList ?? throw new Exception("Failed to get Pod List");
-        podFound = podList.Items.Any(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase));
-        Assert.False(podFound);
+        integrationPod = podList.Items.FirstOrDefault(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase));
+        Assert.Null(integrationPod);
 
         Console.WriteLine("Integration Test Pod not found.  Continuing with test");
 
@@ -131,16 +131,20 @@ public class DeploymentTests : IClassFixture<TestSharedContext> {
         DateTime maxTimeToWaitForDeployment = DateTime.Now.Add(TestSharedContext.MAX_TIMESPAN_TO_WAIT_FOR_MSG);
         Console.WriteLine("Starting polling to wait for deployment...");
 
-        while (!podFound && DateTime.Now <= maxTimeToWaitForDeployment) {
+        while (integrationPod == null && DateTime.Now <= maxTimeToWaitForDeployment) {
             result = await TestSharedContext.K8S_CLIENT.CoreV1.ListPodForAllNamespacesWithHttpMessagesAsync(allowWatchBookmarks: false, watch: false, pretty: true);
             podList = result.Body as k8s.Models.V1PodList ?? throw new Exception("Failed to get Pod List");
-            podFound = podList.Items.Any(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase));
-            Console.WriteLine($"...pod found: {podFound}");
-            if (!podFound) await Task.Delay(5000);
+            integrationPod = podList.Items.FirstOrDefault(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase));
+            Console.WriteLine($"...pod found: {integrationPod == null}");
+            if ((integrationPod == null) || (integrationPod.Status.Phase == "Pending")) {
+                integrationPod = null; // Removing the pod since it's not done provisioning yet
+                await Task.Delay(5000);
+            }
         }
 
-        if (podFound == false) throw new TimeoutException($"Failed to find deployment after {TestSharedContext.MAX_TIMESPAN_TO_WAIT_FOR_MSG}.  Please check that {TestSharedContext.TARGET_SVC_APP_ID} is deployed");
-        Assert.True(podFound);
+        if (integrationPod == null || integrationPod?.Status.Phase == "Pending") throw new TimeoutException($"Failed to find deployment after {TestSharedContext.MAX_TIMESPAN_TO_WAIT_FOR_MSG}.  Please check that {TestSharedContext.TARGET_SVC_APP_ID} is deployed");
+        Assert.NotNull(integrationPod);
+        Assert.Equal("Running", integrationPod.Status.Phase);
 
         string recdFile = Path.Combine((await TestSharedContext.SPACEFX_CLIENT.GetXFerDirectories()).inbox_directory, "astronaut.jpg");
 
@@ -158,20 +162,20 @@ public class DeploymentTests : IClassFixture<TestSharedContext> {
         Console.WriteLine("Integration Test Pod Found.  Waiting for deletion (max 3 mins)");
         maxTimeToWaitForDeployment = DateTime.Now.Add(TimeSpan.FromMinutes(3));
 
-        while (podFound && DateTime.Now <= maxTimeToWaitForDeployment) {
+        while (integrationPod != null && DateTime.Now <= maxTimeToWaitForDeployment) {
             result = await TestSharedContext.K8S_CLIENT.CoreV1.ListPodForAllNamespacesWithHttpMessagesAsync(allowWatchBookmarks: false, watch: false, pretty: true);
             podList = result.Body as k8s.Models.V1PodList ?? throw new Exception("Failed to get Pod List");
-            podFound = podList.Items.Any(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase));
-            Console.WriteLine($"...pod found: {podFound}");
-            if (podFound) await Task.Delay(5000);
+            integrationPod = podList.Items.FirstOrDefault(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase));
+            Console.WriteLine($"...pod found: {integrationPod != null}");
+            if (integrationPod != null) await Task.Delay(5000);
         }
 
-        if (podFound == true) throw new TimeoutException($"Failed to remove deployment after {TimeSpan.FromMinutes(3)}.  Please check that {TestSharedContext.TARGET_SVC_APP_ID} is deployed");
+        if (integrationPod != null) throw new TimeoutException($"Failed to remove deployment after {TimeSpan.FromMinutes(3)}.  Please check that {TestSharedContext.TARGET_SVC_APP_ID} is deployed");
 
 
 
 
         Console.WriteLine("Integration Test Pod successfully removed.");
-        Assert.False(podFound);
+        Assert.Null(integrationPod);
     }
 }
