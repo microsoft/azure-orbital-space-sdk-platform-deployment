@@ -134,12 +134,10 @@ public class DeploymentTests : IClassFixture<TestSharedContext> {
         while (integrationPod == null && DateTime.Now <= maxTimeToWaitForDeployment) {
             result = await TestSharedContext.K8S_CLIENT.CoreV1.ListPodForAllNamespacesWithHttpMessagesAsync(allowWatchBookmarks: false, watch: false, pretty: true);
             podList = result.Body as k8s.Models.V1PodList ?? throw new Exception("Failed to get Pod List");
-            integrationPod = podList.Items.FirstOrDefault(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase));
+            integrationPod = podList.Items.FirstOrDefault(pod => pod.Name().Contains("integration-test", StringComparison.CurrentCultureIgnoreCase) && pod.Status.Phase == "Running");
             Console.WriteLine($"...pod found: {integrationPod == null}");
-            if ((integrationPod == null) || (integrationPod.Status.Phase == "Pending")) {
-                integrationPod = null; // Removing the pod since it's not done provisioning yet
+            if (integrationPod == null)
                 await Task.Delay(5000);
-            }
         }
 
         if (integrationPod == null || integrationPod?.Status.Phase == "Pending") throw new TimeoutException($"Failed to find deployment after {TestSharedContext.MAX_TIMESPAN_TO_WAIT_FOR_MSG}.  Please check that {TestSharedContext.TARGET_SVC_APP_ID} is deployed");
