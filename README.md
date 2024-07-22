@@ -2,6 +2,8 @@
 
 [![platform-deployment-build](https://github.com/microsoft/azure-orbital-space-sdk-platform-deployment/actions/workflows/platform-deployment-build-publish.yaml/badge.svg)](https://github.com/microsoft/azure-orbital-space-sdk-platform-deployment/actions/workflows/platform-deployment-build-publish.yaml)
 
+[![test-platform-deployment](https://github.com/microsoft/azure-orbital-space-sdk-platform-deployment/actions/workflows/platform-deployment-test.yaml/badge.svg)](https://github.com/microsoft/azure-orbital-space-sdk-platform-deployment/actions/workflows/platform-deployment-test.yaml)
+
 This repository hosts the Platform-Deployment.
 
 Outputs:
