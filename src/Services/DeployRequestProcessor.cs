@@ -244,7 +244,7 @@ public partial class Services {
             deploymentItem = _k8sClient.DeployItem(deploymentItem: deploymentItem);
 
             if (deploymentItem.ResponseHeader.Status != MessageFormats.Common.StatusCodes.Successful) {
-                _logger.LogError("Failed to process '{messageType}' for '{AppName}' / '{DeployAction}' / '{trackingId}' / '{correlationId}'.  Error: {error}", deploymentItem.DeployRequest.GetType(), deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId, deploymentItem.ResponseHeader.Message);
+                _logger.LogError("Failed to process '{messageType}' for '{AppName}' / '{DeployAction}' / '{trackingId}' / '{correlationId} / '{status}'.  Error: {error}", deploymentItem.DeployRequest.GetType(), deploymentItem.DeployRequest.AppName, deploymentItem.DeployRequest.DeployAction, deploymentItem.DeployRequest.RequestHeader.TrackingId, deploymentItem.DeployRequest.RequestHeader.CorrelationId, deploymentItem.ResponseHeader.Status, deploymentItem.ResponseHeader.Message);
                 CommitToCache(deploymentItem);
                 return;
             }
