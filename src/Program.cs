@@ -13,9 +13,6 @@ public class Program {
         // Load any local appsettings incase they're overriding the cluster values
         builder.Configuration.AddJsonFile(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.{env:DOTNET_ENVIRONMENT}.json"), optional: true, reloadOnChange: false);
 
-        // Build the configuration
-        build.Configuration.Build();
-
         builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(50051, o => o.Protocols = HttpProtocols.Http2))
         .ConfigureServices((services) => {
             services.AddAzureOrbitalFramework();
