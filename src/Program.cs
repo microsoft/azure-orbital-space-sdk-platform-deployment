@@ -14,9 +14,9 @@ public class Program {
 
         // Load any local appsettings incase they're overriding the cluster values
         string? dotnet_env = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
-        if (!string.IsNullOrWhiteSpace(dotnet_env)) {
+        if (!string.IsNullOrWhiteSpace(dotnet_env))
             builder.Configuration.AddJsonFile(Path.Combine(Directory.GetCurrentDirectory(), $"appsettings.{dotnet_env}.json"), optional: true, reloadOnChange: false);
-        }
+
 
 
         builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(50051, o => o.Protocols = HttpProtocols.Http2))
