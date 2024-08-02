@@ -5,7 +5,7 @@ public class Program {
     public static void Main(string[] args) {
         var builder = WebApplication.CreateBuilder(args);
 
-        string _secretDir = Environment.GetEnvironmentVariable("SPACEFX_SECRET_DIR") ?? throw new Exception("SPACEFX_CONFIG_DIR environment variable not set");
+        string _secretDir = Environment.GetEnvironmentVariable("SPACEFX_SECRET_DIR") ?? throw new Exception("SPACEFX_SECRET_DIR environment variable not set");
         // Load the configuration being supplicated by the cluster first
         builder.Configuration.AddJsonFile(Path.Combine($"{_secretDir}", "config", "appsettings.json"), optional: false, reloadOnChange: false);
 
