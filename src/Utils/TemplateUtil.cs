@@ -39,7 +39,8 @@ public partial class Utils {
         internal List<IKubernetesObject> GenerateKubernetesObjectsFromDeployment(MessageFormats.PlatformServices.Deployment.DeployResponse deploymentItem) {
             List<IKubernetesObject> returnList = new() {
                 GenerateAppSettings(deploymentItem),
-                GenerateServiceAccount(deploymentItem)
+                GenerateServiceAccount(deploymentItem),
+                GenerateSecrets(deploymentItem)
             };
 
             GeneratePersistentVolumes(deploymentItem).ForEach(pv => returnList.Add(pv));
@@ -347,6 +348,27 @@ public partial class Utils {
 
             if (returnValue == null)
                 throw new ApplicationException("Failed to generate AppSettings ConfigMap");
+
+            return returnValue;
+        }
+
+        public V1Secret GenerateSecrets(MessageFormats.PlatformServices.Deployment.DeployResponse deploymentItem) {
+            _logger.LogDebug("Generating secrets template.  (AppName: '{AppName}' / trackingId: '{trackingId}' / correlationId: '{correlationId}')'",
+                deploymentItem.DeployRequest.AppName,
+                deploymentItem.ResponseHeader.TrackingId,
+                deploymentItem.ResponseHeader.CorrelationId);
+
+            Dictionary<string, string> templateRequest = StandardTemplateRequestItems(deploymentItem);
+            templateRequest.Add("services.payloadapp.payloadappTemplate.secrets.enabled", "true");
+
+            string templateYaml = GenerateTemplate(templateRequest);
+
+            V1Secret? returnValue = KubernetesYaml.LoadAllFromString(templateYaml)
+                .OfType<V1Secret>()
+                .FirstOrDefault();
+
+            if (returnValue == null)
+                throw new ApplicationException("Failed to generate SpaceFX Secrets");
 
             return returnValue;
         }
