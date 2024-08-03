@@ -370,6 +370,14 @@ public partial class Utils {
             if (returnValue == null)
                 throw new ApplicationException("Failed to generate SpaceFX Secrets");
 
+            // The template returns the values in base64 encoded strings.  We have to decode them to their byte values.
+            // Kubernetes normally does this for us on yaml ingession, but we're skipping that and add items via the API
+            // So we just have to convert the arrays to strings, base64 decode them, then convert them back to byte arrays
+            foreach (var kvp in returnValue.Data) {
+                string decodedValue = Encoding.UTF8.GetString(Convert.FromBase64String(Encoding.UTF8.GetString(kvp.Value)));
+                returnValue.Data[kvp.Key] = Encoding.UTF8.GetBytes(decodedValue);
+            }
+
             return returnValue;
         }
 
