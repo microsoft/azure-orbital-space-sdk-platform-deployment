@@ -227,7 +227,10 @@ public partial class Services {
                                            || _response.DeployRequest.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Create
                                            || _response.DeployRequest.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Delete) {
                         WaitForFileToFinishCopying(Path.Combine(_scheduleImportDirectory, _response.DeployRequest.YamlFileContents));
+
+                        string yamlFilePath = Path.Combine(_scheduleImportDirectory, _response.DeployRequest.YamlFileContents);
                         _response.DeployRequest.YamlFileContents = File.ReadAllText(Path.Combine(_scheduleImportDirectory, _response.DeployRequest.YamlFileContents));
+                        File.Delete(yamlFilePath);
                     }
 
 
@@ -473,24 +476,53 @@ public partial class Services {
             if (request.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Apply
                         || request.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Create
                         || request.DeployAction == MessageFormats.PlatformServices.Deployment.DeployRequest.Types.DeployActions.Delete) {
-                if (string.IsNullOrWhiteSpace(request.YamlFileContents))
+
+                if (string.IsNullOrWhiteSpace(request.YamlFileContents)) {
                     errorFields.Add(nameof(request.YamlFileContents));
+                } else {
+                    // This lets the schedule retry next go round
+                    if (!File.Exists(Path.Combine(_scheduleImportDirectory, request.YamlFileContents))) {
+                        throw new FileNotFoundException($"YamlFile '{request.YamlFileContents}' does not exist at {_scheduleImportDirectory}.", fileName: request.YamlFileContents);
+                    }
+
+                    // Wait for the file to finish copying or timeout if we didn't receive one
+                    try {
+                        WaitForFileToFinishCopying(Path.Combine(_scheduleImportDirectory, request.YamlFileContents));
+                    } catch (TimeoutException) {
+                        // Only trip an error if the file is required
+                        if (request.AppContextFile.Required == true) {
+                            throw new FileNotFoundException($"YamlFile '{request.YamlFileContents}' still copying to {_scheduleImportDirectory}.", fileName: request.YamlFileContents);
+                        }
+                    }
+                }
+
 
                 System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex("[^a-zA-Z0-9_-]");
                 if (regex.IsMatch(Path.GetFileNameWithoutExtension(request.YamlFileContents))) {
                     response.ResponseHeader.Message += "YamlFileContents value invalid (special characters founds). (RegEx matched on '[^a-zA-Z0-9_]').";
                     errorFields.Add(nameof(request.YamlFileContents));
                 }
-
-                if (!File.Exists(Path.Combine(_scheduleImportDirectory, request.YamlFileContents))) {
-                    response.ResponseHeader.Message += $"YamlFile '{request.YamlFileContents}' does not exist at {_scheduleImportDirectory}.";
-                    errorFields.Add(nameof(request.YamlFileContents));
-                }
             }
 
             if (request.AppContainerImage != null) {
-                if (string.IsNullOrWhiteSpace(request.AppContainerImage.TarballFileName))
+                if (string.IsNullOrWhiteSpace(request.AppContainerImage.TarballFileName)) {
                     errorFields.Add(nameof(request.AppContainerImage.TarballFileName));
+                } else {
+                    // This lets the schedule retry next go round
+                    if (!File.Exists(Path.Combine(_scheduleImportDirectory, request.AppContainerImage.TarballFileName))) {
+                        throw new FileNotFoundException($"AppContainerImage Tarball '{request.AppContainerImage.TarballFileName}' does not exist at {_scheduleImportDirectory}.", fileName: request.AppContainerImage.TarballFileName);
+                    }
+
+                    // Wait for the file to finish copying or timeout if we didn't receive one
+                    try {
+                        WaitForFileToFinishCopying(Path.Combine(_scheduleImportDirectory, request.AppContainerImage.TarballFileName));
+                    } catch (TimeoutException) {
+                        // Only trip an error if the file is required
+                        if (request.AppContextFile.Required == true) {
+                            throw new FileNotFoundException($"DockerFile '{request.AppContainerImage.TarballFileName}' still copying to {_scheduleImportDirectory}.", fileName: request.AppContainerImage.TarballFileName);
+                        }
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(request.AppContainerImage.DestinationRepository))
                     errorFields.Add(nameof(request.AppContainerImage.DestinationRepository));
@@ -500,8 +532,24 @@ public partial class Services {
             }
 
             if (request.AppContainerBuild != null) {
-                if (string.IsNullOrWhiteSpace(request.AppContainerBuild.DockerFile))
+                if (string.IsNullOrWhiteSpace(request.AppContainerBuild.DockerFile)) {
                     errorFields.Add(nameof(request.AppContainerBuild.DockerFile));
+                } else {
+                    // This lets the schedule retry next go round
+                    if (!File.Exists(Path.Combine(_scheduleImportDirectory, request.AppContainerBuild.DockerFile))) {
+                        throw new FileNotFoundException($"DockerFile'{request.AppContainerBuild.DockerFile}' does not exist at {_scheduleImportDirectory}.", fileName: request.AppContainerBuild.DockerFile);
+                    }
+
+                    // Wait for the file to finish copying or timeout if we didn't receive one
+                    try {
+                        WaitForFileToFinishCopying(Path.Combine(_scheduleImportDirectory, request.AppContainerBuild.DockerFile));
+                    } catch (TimeoutException) {
+                        // Only trip an error if the file is required
+                        if (request.AppContextFile.Required == true) {
+                            throw new FileNotFoundException($"DockerFile '{request.AppContainerBuild.DockerFile}' still copying to {_scheduleImportDirectory}.", fileName: request.AppContainerBuild.DockerFile);
+                        }
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(request.AppContainerBuild.DestinationRepository))
                     errorFields.Add(nameof(request.AppContainerBuild.DestinationRepository));
@@ -514,14 +562,18 @@ public partial class Services {
                 if (string.IsNullOrWhiteSpace(request.AppContextFile.FileName)) {
                     errorFields.Add(nameof(request.AppContextFile.FileName));
                 } else {
+                    // This lets the schedule retry next go round
+                    if (!File.Exists(Path.Combine(_scheduleImportDirectory, request.AppContextFile.FileName))) {
+                        throw new FileNotFoundException($"AppContextFile '{request.AppContextFile.FileName}' does not exist at {_scheduleImportDirectory}.", fileName: request.AppContextFile.FileName);
+                    }
+
                     // Wait for the file to finish copying or timeout if we didn't receive one
                     try {
                         WaitForFileToFinishCopying(Path.Combine(_scheduleImportDirectory, request.AppContextFile.FileName));
                     } catch (TimeoutException) {
                         // Only trip an error if the file is required
                         if (request.AppContextFile.Required == true) {
-                            response.ResponseHeader.Message += $"AppContextFile '{request.AppContextFile.FileName}' is still being copied.  Please wait for the file to finish copying.";
-                            errorFields.Add(nameof(request.AppContextFile.FileName));
+                            throw new FileNotFoundException($"AppContextFile '{request.AppContextFile.FileName}' still copying to {_scheduleImportDirectory}.", fileName: request.AppContextFile.FileName);
                         }
                     }
                 }

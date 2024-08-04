@@ -198,6 +198,9 @@ public partial class Utils {
                     case V1PersistentVolume pv:
                         _k8sClient.PatchPersistentVolume(new V1Patch(pv, V1Patch.PatchType.MergePatch), name: pv.Metadata.Name);
                         break;
+                    case V1Secret secret:
+                        _k8sClient.PatchNamespacedSecret(new V1Patch(secret, V1Patch.PatchType.MergePatch), name: secret.Metadata.Name, namespaceParameter: secret.Metadata.NamespaceProperty);
+                        break;
                     case V1ConfigMap cm:
                         _k8sClient.PatchNamespacedConfigMap(new V1Patch(cm, V1Patch.PatchType.MergePatch), name: cm.Metadata.Name, namespaceParameter: cm.Metadata.NamespaceProperty);
                         break;
@@ -230,6 +233,8 @@ public partial class Utils {
                         if (job.Metadata == null || string.IsNullOrEmpty(job.Metadata.NamespaceProperty)) { throw new NullReferenceException("Metadata.NamespaceProperty is null or empty"); }
                         _k8sClient.PatchNamespacedJob(new V1Patch(job, V1Patch.PatchType.MergePatch), name: job.Metadata.Name, namespaceParameter: job.Metadata.NamespaceProperty);
                         break;
+                    default:
+                        throw new Exception(string.Format($"Unknown object type: {yamlObject.GetType()}"));
                 }
             } catch (k8s.Autorest.HttpOperationException ex) {
                 if (ex.Response.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity) {
@@ -258,6 +263,9 @@ public partial class Utils {
                         break;
                     case V1PersistentVolume pv:
                         _k8sClient.DeletePersistentVolume(name: pv.Metadata.Name);
+                        break;
+                    case V1Secret secret:
+                        _k8sClient.DeleteNamespacedSecret(name: secret.Metadata.Name, namespaceParameter: secret.Metadata.NamespaceProperty);
                         break;
                     case V1ConfigMap cm:
                         if (cm.Metadata == null || string.IsNullOrEmpty(cm.Metadata.NamespaceProperty)) { throw new NullReferenceException("Metadata.NamespaceProperty is null or empty"); }
@@ -292,6 +300,8 @@ public partial class Utils {
                         if (job.Metadata == null || string.IsNullOrEmpty(job.Metadata.NamespaceProperty)) { throw new NullReferenceException("Metadata.NamespaceProperty is null or empty"); }
                         _k8sClient.DeleteNamespacedJob(name: job.Metadata.Name, namespaceParameter: job.Metadata.NamespaceProperty, propagationPolicy: "Background");
                         break;
+                    default:
+                        throw new Exception(string.Format($"Unknown object type: {yamlObject.GetType()}"));
                 }
             } catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.NotFound) {
                 // We can ignore the error if we're trying to delete something and it's not found.
@@ -311,6 +321,10 @@ public partial class Utils {
                         break;
                     case V1Namespace ns:
                         _k8sClient.CreateNamespace(body: ns);
+                        break;
+                    case V1Secret secret:
+                        if (secret.Metadata == null || string.IsNullOrEmpty(secret.Metadata.NamespaceProperty)) { throw new NullReferenceException("Metadata.NamespaceProperty is null or empty"); }
+                        _k8sClient.CreateNamespacedSecret(body: secret, namespaceParameter: secret.Metadata.NamespaceProperty);
                         break;
                     case V1ConfigMap cm:
                         if (cm.Metadata == null || string.IsNullOrEmpty(cm.Metadata.NamespaceProperty)) { throw new NullReferenceException("Metadata.NamespaceProperty is null or empty"); }
@@ -342,6 +356,8 @@ public partial class Utils {
                         if (job.Metadata == null || string.IsNullOrEmpty(job.Metadata.NamespaceProperty)) { throw new NullReferenceException("Metadata.NamespaceProperty is null or empty"); }
                         _k8sClient.CreateNamespacedJob(body: job, namespaceParameter: job.Metadata.NamespaceProperty);
                         break;
+                    default:
+                        throw new Exception(string.Format($"Unknown object type: {yamlObject.GetType()}"));
                 }
             } catch (Exception ex) {
                 _logger.LogError("Failed to create object of type '{yamlKind}'.  Error: {error}", yamlObject.Kind, ex.Message);
