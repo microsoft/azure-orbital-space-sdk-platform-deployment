@@ -5,6 +5,7 @@ on:
     push:
         branches:
         - main
+        - '[0-9]*.[0-9]*.[0-9]*-nightly'
 
 jobs:
   build-platform-deployment-amd64:
@@ -12,7 +13,7 @@ jobs:
       contents: read
       packages: write
 
-    uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/service-build.yml@main
+    uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/service-build.yml@0.11.0-nightly
     with:
       APP_PROJECT: ./src/platform-deployment.csproj
       NUGET_PROJECT: ./src_pluginBase/pluginBase.csproj
@@ -32,7 +33,7 @@ jobs:
       contents: read
       packages: write
 
-    uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/service-build.yml@main
+    uses: microsoft/azure-orbital-space-sdk-github-actions/.github/workflows/service-build.yml@0.11.0-nightly
     with:
       APP_PROJECT: ./src/platform-deployment.csproj
       NUGET_PROJECT: ./src_pluginBase/pluginBase.csproj
